@@ -1,0 +1,127 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+
+<!-- Print Styles: Hide UI elements when printing -->
+<style>
+    @media print {
+        .sidebar, .no-print, hr { display: none !important; }
+        .col-md-10 { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        .card { border: none !important; box-shadow: none !important; }
+        body { background-color: white; }
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+    <h2><i class="bi bi-bar-chart-fill"></i> System Reports</h2>
+    <button class="btn btn-outline-dark fw-bold" onclick="window.print()"><i class="bi bi-printer"></i> Print Report</button>
+</div>
+<hr class="no-print">
+
+<!-- Filter Form (Hidden on Print) -->
+<div class="card shadow-sm mb-4 border-0 no-print">
+    <div class="card-header bg-dark text-white fw-bold">Generate Report</div>
+    <div class="card-body bg-light">
+        <form method="GET" class="row align-items-end">
+            <div class="col-md-3 mb-2">
+                <label class="fw-bold">Report Type</label>
+                <select name="report_type" class="form-select fw-bold text-primary">
+                    <option value="Finance" {% if report_type == 'Finance' %}selected{% endif %}>Finance / Accounts</option>
+                    <option value="Complaints" {% if report_type == 'Complaints' %}selected{% endif %}>Complaints</option>
+                    <option value="Invoices" {% if report_type == 'Invoices' %}selected{% endif %}>Invoices</option>
+                </select>
+            </div>
+            <div class="col-md-2 mb-2">
+                <label class="fw-bold">Start Date</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+            </div>
+            <div class="col-md-2 mb-2">
+                <label class="fw-bold">End Date</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="fw-bold">Filter by Client</label>
+                <select name="client_id" class="form-select">
+                    <option value="">-- All Clients --</option>
+                    {% for c in clients %}
+                    <option value="{{ c.id }}" {% if client_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 mb-2">
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Generate</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Printable Report Section -->
+<div class="printable-area">
+    <div class="text-center mb-4">
+        <h2 class="text-uppercase fw-bold">{{ report_type }} Report</h2>
+        <p class="text-muted mb-0">
+            {% if start_date and end_date %}Period: {{ start_date }} to {{ end_date }}
+            {% else %}All Time Record{% endif %}
+        </p>
+    </div>
+
+    <!-- Summary Badges -->
+    <div class="row mb-4">
+        {% for key, value in summary.items %}
+        <div class="col">
+            <div class="card bg-light border-dark shadow-sm text-center py-2">
+                <h6 class="text-uppercase text-muted mb-1">{{ key }}</h6>
+                <h4 class="mb-0 fw-bold text-primary">{{ value }}</h4>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Data Table -->
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            {% if report_type == 'Finance' %}
+                <tr><th>Date</th><th>Category</th><th>Details</th><th>Status</th><th class="text-end">Amount (Rs)</th></tr>
+            {% elif report_type == 'Complaints' %}
+                <tr><th>Date</th><th>Complaint #</th><th>Client</th><th>Status</th><th>Technician</th></tr>
+            {% elif report_type == 'Invoices' %}
+                <tr><th>Date</th><th>Invoice #</th><th>Client</th><th>Tax</th><th class="text-end">Total (Rs)</th></tr>
+            {% endif %}
+        </thead>
+        <tbody>
+            {% for item in results %}
+                {% if report_type == 'Finance' %}
+                    <tr>
+                        <td>{{ item.date|date:"M d, Y" }}</td>
+                        <td>{{ item.category }}</td>
+                        <td>{{ item.client.name|default:"-" }} / {{ item.expense_category.name|default:"" }}</td>
+                        <td>{{ item.payment_status }}</td>
+                        <td class="text-end">{{ item.amount }}</td>
+                    </tr>
+                {% elif report_type == 'Complaints' %}
+                    <tr>
+                        <td>{{ item.date_time|date:"M d, Y" }}</td>
+                        <td class="fw-bold">{{ item.complaint_number }}</td>
+                        <td>{{ item.client.name }}</td>
+                        <td>{{ item.status }}</td>
+                        <td>{{ item.technician.name|default:"-" }}</td>
+                    </tr>
+                {% elif report_type == 'Invoices' %}
+                    <tr>
+                        <td>{{ item.date|date:"M d, Y" }}</td>
+                        <td class="fw-bold">{{ item.invoice_number }}</td>
+                        <td>{{ item.client.name }}</td>
+                        <td>{% if item.apply_tax %}Yes{% else %}No{% endif %}</td>
+                        <td class="text-end fw-bold">{{ item.grand_total }}</td>
+                    </tr>
+                {% endif %}
+            {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No data matches the selected filters.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="text-center mt-5 pt-5 d-none d-print-block">
+        <p class="text-muted small">Generated automatically by Elakta ERP on {% now "F j, Y h:i A" %}</p>
+    </div>
+</div>
+{% endblock %}

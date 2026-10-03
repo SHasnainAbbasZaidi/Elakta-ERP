@@ -1,0 +1,46 @@
+[data-bs-theme="dark"]{color-scheme:dark;--erp-body-bg:#0c1422;--erp-card-bg:#162235;--erp-text-main:#e5edf8;--erp-text-muted:#a5b4ca;--bs-body-bg:#0c1422;--bs-body-color:#e5edf8;--bs-border-color:#34435a}
+[data-bs-theme="dark"] body{background:#0c1422;color:#e5edf8}
+[data-bs-theme="dark"] .top-navbar,[data-bs-theme="dark"] .card,[data-bs-theme="dark"] .modal-content,[data-bs-theme="dark"] .list-group-item{background:#162235;color:#e5edf8;border-color:#34435a}
+[data-bs-theme="dark"] .bg-white,[data-bs-theme="dark"] .bg-light,[data-bs-theme="dark"] .card-header.bg-dark,[data-bs-theme="dark"] .quick-actions .btn{background-color:#1c2b40!important;color:#e5edf8!important;border-color:#34435a!important}
+[data-bs-theme="dark"] .text-dark{color:#e5edf8!important}
+[data-bs-theme="dark"] .text-muted,[data-bs-theme="dark"] .text-secondary{color:#a5b4ca!important}
+[data-bs-theme="dark"] .form-control,[data-bs-theme="dark"] .form-select,[data-bs-theme="dark"] .erp-form input:not([type=checkbox]):not([type=radio]),[data-bs-theme="dark"] .erp-form select,[data-bs-theme="dark"] .erp-form textarea{background:#101c2d;color:#e5edf8;border-color:#41516a}
+[data-bs-theme="dark"] input::placeholder,[data-bs-theme="dark"] textarea::placeholder{color:#96a8bf}
+[data-bs-theme="dark"] .table{--bs-table-bg:#162235;--bs-table-color:#e5edf8;--bs-table-striped-color:#e5edf8;--bs-table-hover-color:#fff;--bs-table-hover-bg:#24374e;--bs-table-border-color:#34435a}
+[data-bs-theme="dark"] .table thead th{background:#22334a;color:#bacbe2}
+[data-bs-theme="dark"] .table-striped>tbody>tr:nth-of-type(odd)>*{--bs-table-bg-type:#1c2b40}
+[data-bs-theme="dark"] .empty-state,[data-bs-theme="dark"] .empty-state h6{color:#b9cbe3}
+[data-bs-theme="dark"] .empty-state>i{background:#233954;color:#9bbdf7}
+[data-bs-theme="dark"] .btn-light,[data-bs-theme="dark"] .btn-secondary{background:#293b54;color:#e5edf8;border-color:#41516a}
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection,[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown{background:#101c2d;color:#e5edf8;border-color:#41516a}
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered{color:#e5edf8}
+[data-bs-theme="dark"] .bg-warning.text-dark,[data-bs-theme="dark"] .bg-warning .text-dark{color:#17263d!important}
+[data-theme-toggle]{white-space:nowrap;min-width:40px;min-height:36px}
+.login-theme-toggle{position:absolute;right:20px;top:20px}
+@media(max-width:575px){.top-navbar>.gap-3{gap:8px!important}.top-navbar .border-start{padding-left:8px!important}}
+@media print{[data-theme-toggle]{display:none!important}}
+
+/* Native and enhanced dropdowns follow the same theme, including detached menus. */
+html[data-bs-theme="dark"] { color-scheme: dark; }
+html[data-bs-theme="light"] { color-scheme: light; }
+[data-bs-theme="dark"] select, [data-bs-theme="dark"] select option,
+[data-bs-theme="dark"] select optgroup, [data-bs-theme="dark"] .dropdown-menu,
+[data-bs-theme="dark"] .select2-container .select2-selection,
+[data-bs-theme="dark"] .select2-dropdown, [data-bs-theme="dark"] .select2-search__field {
+ background-color: #182235 !important; color: #e5edf8 !important; border-color: #40506a !important;
+}
+[data-bs-theme="dark"] .dropdown-item,
+[data-bs-theme="dark"] .select2-selection__rendered,
+[data-bs-theme="dark"] .select2-results__option { color: #e5edf8 !important; }
+[data-bs-theme="dark"] .dropdown-item:hover, [data-bs-theme="dark"] .dropdown-item:focus,
+[data-bs-theme="dark"] .select2-results__option--highlighted,
+[data-bs-theme="dark"] .select2-results__option[aria-selected="true"],
+[data-bs-theme="dark"] .select2-selection__choice { background-color: #334b70 !important; color: #fff !important; }
+[data-bs-theme="dark"] .dropdown-item.disabled,
+[data-bs-theme="dark"] .select2-results__option[aria-disabled="true"] { color: #8f9cb0 !important; }
+.document-field input, .document-field select, .document-field textarea,
+.erp-form input:not([type="checkbox"]), .erp-form select, .erp-form textarea {
+ display: block; width: 100%; padding: .55rem .75rem; border: 1px solid var(--bs-border-color); border-radius: .5rem; background: var(--bs-body-bg); color: var(--bs-body-color);
+}
+.document-field label, .erp-form label { margin-bottom: .4rem; font-weight: 600; }
+[data-date-fields][hidden] { display: none !important; }

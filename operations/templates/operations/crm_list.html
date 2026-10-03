@@ -1,0 +1,111 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-kanban text-primary"></i> CRM Lead Board</h2>
+    <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#addLeadModal"><i class="bi bi-plus-circle"></i> Add New Lead</button>
+</div>
+
+<!-- KANBAN BOARD -->
+<div class="row g-3">
+    {% for stat_name in statuses %}
+    <div class="col-md-3">
+        <div class="card bg-light border-0 shadow-sm h-100">
+            <div class="card-header fw-bold text-uppercase 
+                {% if stat_name == 'New' %}bg-primary text-white
+                {% elif stat_name == 'Follow-Up' %}bg-warning text-dark
+                {% elif stat_name == 'Converted' %}bg-success text-white
+                {% else %}bg-danger text-white{% endif %}">
+                {{ stat_name }}
+            </div>
+            <div class="card-body p-2" style="min-height: 500px; overflow-y: auto;">
+                {% for lead in leads %}
+                    {% if lead.status == stat_name %}
+                    <a href="{% url 'crm_lead_detail' lead.id %}" class="text-decoration-none text-dark">
+                        <div class="card shadow-sm border-0 mb-3 border-start border-4 
+                            {% if lead.priority == 'High' %}border-danger{% elif lead.priority == 'Medium' %}border-warning{% else %}border-info{% endif %} 
+                            hover-card">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="badge bg-secondary">{{ lead.lead_source|default:"Direct" }}</span>
+                                    <small class="text-muted fw-bold">{{ lead.priority }}</small>
+                                </div>
+                                <h6 class="fw-bold mb-1">{{ lead.client_name }}</h6>
+                                {% if lead.company_name %}<div class="small text-muted">{{ lead.company_name }}</div>{% endif %}
+                                <div class="text-success fw-bold format-num mt-2">{{ lead.expected_value }}</div>
+                                
+                                {% if lead.next_follow_up %}
+                                <div class="small mt-2"><i class="bi bi-calendar-event"></i> Follow up: <strong>{{ lead.next_follow_up|date:"M d, Y" }}</strong></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Add Lead Modal -->
+<div class="modal fade" id="addLeadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Register New Lead</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6 mb-2"><label class="fw-bold">Contact Person *</label><input type="text" name="client_name" class="form-control" required></div>
+                        <div class="col-6 mb-2"><label class="fw-bold">Company Name</label><input type="text" name="company_name" class="form-control"></div>
+                        <div class="col-6 mb-2"><label class="fw-bold">Mobile Number *</label><input type="text" name="contact" class="form-control" required></div>
+                        <div class="col-6 mb-2"><label class="fw-bold">Priority</label>
+                            <select name="priority" class="form-select">
+                                <option value="Medium">Medium</option>
+                                <option value="High">ðŸ”¥ High</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                        <div class="col-6 mb-2"><label class="fw-bold">Lead Source</label><input type="text" name="lead_source" class="form-control" placeholder="e.g., Website, Referral"></div>
+                        <div class="col-6 mb-2"><label class="fw-bold">Expected Deal (PKR)</label><input type="number" step="any" name="expected_value" class="form-control" value="0"></div>
+                        <div class="col-6 mb-2"><label class="fw-bold">Next Follow-Up</label><input type="date" name="next_follow_up" class="form-control"></div>
+                        <div class="col-6 mb-2"><label class="fw-bold">Assign To</label>
+                            <select name="assigned_to" class="form-select">
+                                <option value="">-- Select User --</option>
+                                {% for u in users %}<option value="{{ u.id }}" {% if request.user.id == u.id %}selected{% endif %}>{{ u.username }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 mb-2"><label class="fw-bold">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="New">New</option>
+                                <option value="Follow-Up">Follow-Up</option>
+                                <option value="Converted">Converted</option>
+                                <option value="Lost">Lost</option>
+                            </select>
+                        </div>
+                        <div class="col-12 mb-2"><label class="fw-bold">Notes</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary fw-bold w-100">Save Lead</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-card:hover { transform: scale(1.02); transition: 0.2s; cursor: pointer; }
+</style>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.format-num').forEach(function(el) {
+            var val = parseFloat(el.innerText);
+            if (!isNaN(val)) el.innerText = 'PKR ' + Math.round(val).toLocaleString('en-US');
+        });
+    });
+</script>
+{% endblock %}

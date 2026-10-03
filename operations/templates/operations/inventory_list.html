@@ -1,0 +1,149 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-box-seam"></i> Inventory Management</h2>
+    <div>
+        <a href="{% url 'print_inventory' %}" target="_blank" class="btn btn-outline-dark fw-bold me-2"><i class="bi bi-printer"></i> Print List</a>
+        <a href="{% url 'add_inventory' %}" class="btn btn-primary fw-bold"><i class="bi bi-plus-circle"></i> Add New Item</a>
+    </div>
+</div>
+<hr>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Item Code</th>
+                    <th>Name / Description</th>
+                    <th>Location</th>
+                    <th>Unit</th>
+                    <th>Current Qty</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="fw-bold text-primary">{{ item.item_code|default:"-" }}</td>
+                    <td>
+                        <strong>{{ item.name }}</strong><br>
+                        <small class="text-muted">{{ item.description|truncatechars:40 }}</small><br>
+                        <small class="text-muted">{{ item.get_purchase_source_display }}: {{ item.vendor.name|default:item.dp_shop_name }}</small>
+                    </td>
+                    <td><span class="badge bg-secondary">{{ item.location.name|default:"Unassigned" }}</span></td>
+                    <td>{{ item.unit.name|default:"-" }}</td>
+                    <td class="fs-5 fw-bold {% if item.qty <= 5 %}text-danger{% else %}text-success{% endif %}">
+                        {{ item.qty }}
+                    </td>
+                    <td class="text-center"><a class="btn btn-sm btn-outline-primary" href="{% url 'edit_inventory' item.id %}">Edit item</a>
+                        <button class="btn btn-sm btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#adjModal{{ item.id }}">
+                            <i class="bi bi-pencil-square"></i> Manage / Edit
+                        </button>
+                    </td>
+                </tr>
+
+                <!-- STOCK ADJUSTMENT & HISTORY MODAL -->
+                <div class="modal fade" id="adjModal{{ item.id }}" tabindex="-1">
+                  <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                      <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-gear"></i> Manage Item: {{ item.name }}</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body bg-light">
+                          <div class="row">
+                              
+                              <!-- Left Side: Manual Stock Adjustment -->
+                              <div class="col-md-5">
+                                  <div class="bg-white p-4 border rounded shadow-sm">
+                                      <h5 class="fw-bold text-primary mb-3">Adjust Stock Manually</h5>
+                                      <form method="POST">
+                                          {% csrf_token %}
+                                          <input type="hidden" name="adjust_stock" value="1">
+                                          <input type="hidden" name="item_id" value="{{ item.id }}">
+                                          
+                                          <div class="mb-3 d-flex gap-3">
+                                              <div class="form-check">
+                                                  <input class="form-check-input" type="radio" name="adj_type" value="Add" id="add{{ item.id }}" checked onchange="toggleDC('{{ item.id }}')">
+                                                  <label class="form-check-label fw-bold text-success" for="add{{ item.id }}"><i class="bi bi-plus-circle"></i> Add Stock</label>
+                                              </div>
+                                              <div class="form-check">
+                                                  <input class="form-check-input" type="radio" name="adj_type" value="Minus" id="minus{{ item.id }}" onchange="toggleDC('{{ item.id }}')">
+                                                  <label class="form-check-label fw-bold text-danger" for="minus{{ item.id }}"><i class="bi bi-dash-circle"></i> Minus Stock</label>
+                                              </div>
+                                          </div>
+                                          
+                                          <!-- Point 7 DC Checkbox Logic -->
+                                          <div class="mb-3 d-none bg-light p-2 border border-danger rounded" id="dcBox{{ item.id }}">
+                                              <div class="form-check mb-2">
+                                                  <input class="form-check-input" type="checkbox" id="linkDC{{ item.id }}" onchange="document.getElementById('dcInput{{ item.id }}').classList.toggle('d-none')">
+                                                  <label class="form-check-label text-danger fw-bold">Link to Delivery Challan (DC)?</label>
+                                              </div>
+                                              <input type="text" name="dc_number" id="dcInput{{ item.id }}" class="form-control d-none border-danger" placeholder="Enter DC Number...">
+                                          </div>
+
+                                          <div class="mb-3">
+                                              <label class="fw-bold">Quantity</label>
+                                              <input type="number" name="adj_qty" class="form-control" min="1" value="1" required>
+                                          </div>
+                                          <div class="mb-4">
+                                              <label class="fw-bold">Reason / Remarks</label>
+                                              <input type="text" name="remark" class="form-control" placeholder="E.g., Returned, Damaged, Cash Purchase..." required>
+                                          </div>
+                                          <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-save"></i> Submit Adjustment</button>
+                                      </form>
+                                  </div>
+                              </div>
+                              
+                              <!-- Right Side: Stock History Log -->
+                              <div class="col-md-7">
+                                  <div class="bg-white p-4 border rounded shadow-sm h-100">
+                                      <h5 class="fw-bold text-secondary mb-3"><i class="bi bi-clock-history"></i> Stock Tracking History</h5>
+                                      <ul class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                                          {% for log in item.logs.all|dictsortreversed:"date" %}
+                                          <li class="list-group-item d-flex justify-content-between align-items-start">
+                                              <div>
+                                                  <div class="fw-bold">{{ log.action }}</div>
+                                                  <small class="text-muted">{{ log.date|date:"M d, Y h:i A" }}</small>
+                                              </div>
+                                              <span class="badge rounded-pill fs-6 {% if log.qty_change > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                                  {% if log.qty_change > 0 %}+{% endif %}{{ log.qty_change }}
+                                              </span>
+                                          </li>
+                                          {% empty %}
+                                          <li class="list-group-item text-muted text-center py-4">No tracking history yet.</li>
+                                          {% endfor %}
+                                      </ul>
+                                  </div>
+                              </div>
+                              
+                          </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-5"><i class="bi bi-box fs-1 d-block mb-2"></i> No items in inventory.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function toggleDC(itemId) {
+        const isMinus = document.getElementById('minus' + itemId).checked;
+        const dcBox = document.getElementById('dcBox' + itemId);
+        if (isMinus) {
+            dcBox.classList.remove('d-none');
+        } else {
+            dcBox.classList.add('d-none');
+            document.getElementById('linkDC' + itemId).checked = false;
+            document.getElementById('dcInput' + itemId).classList.add('d-none');
+            document.getElementById('dcInput' + itemId).value = '';
+        }
+    }
+</script>
+{% endblock %}

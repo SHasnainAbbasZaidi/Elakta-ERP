@@ -1,0 +1,245 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-receipt text-primary"></i> Create / Edit Invoice</h2>
+    <a href="{% url 'invoice_list' %}" class="btn btn-secondary">Cancel</a>
+</div>
+<hr>
+
+<form method="POST" id="invoice-form">
+    {% csrf_token %}
+    {% if form.errors %}<div class="alert alert-danger" role="alert">{{ form.errors }}</div>{% endif %}
+    <input type="hidden" name="calculated_sub_total" id="calc_sub_total" value="0">
+    <input type="hidden" name="calculated_grand_total" id="calc_grand_total" value="0">
+    <input type="hidden" name="calculated_tax_amount" id="calc_tax_amount" value="0">
+
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Company Profile *</label>
+                    <select name="company" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        {% for comp in companies %}<option value="{{ comp.id }}" {% if form.instance.company_id == comp.id %}selected{% endif %}>{{ comp.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold text-primary">Customer Name *</label>
+                    <select name="client_select" id="client_select" class="form-select" required>
+                        <option value="">-- Search or Create Customer --</option>
+                        {% for c in clients %}
+                            <option value="{{ c.id }}" {% if selected_client and selected_client.id == c.id %}selected{% endif %}>{{ c.name }} {% if c.company_name %}({{ c.company_name }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="fw-bold">Date *</label>
+                    <input type="date" name="date" class="form-control" value="{{ form.instance.date|date:'Y-m-d'|default:'' }}" required>
+                </div>
+                
+                <div class="col-md-4 mb-3 border-start border-primary border-3 ps-3">
+                    <label class="fw-bold text-danger">Tax Configuration *</label>
+                    <select name="tax_type" id="tax_type" class="form-select fw-bold" onchange="toggleTaxMode()">
+                        <option value="None" {% if form.instance.tax_type == 'None' %}selected{% endif %}>No Tax (Default)</option>
+                        <option value="Global" {% if form.instance.tax_type == 'Global' %}selected{% endif %}>Complete Invoice Tax</option>
+                        <option value="Item" {% if form.instance.tax_type == 'Item' %}selected{% endif %}>Item-Wise Tax</option>
+                    </select>
+                    
+                    <div id="global_tax_div" class="mt-2 {% if form.instance.tax_type != 'Global' %}d-none{% endif %}">
+                        <select name="global_tax" id="global_tax" class="form-select form-select-sm border-danger" onchange="calculateTotals()">
+                            <option value="">-- Select Tax Rate --</option>
+                            {% for t in taxes %}<option value="{{ t.id }}" data-rate="{{ t.rate }}" {% if form.instance.global_tax_id == t.id %}selected{% endif %}>{{ t.name }} ({{ t.rate }}%)</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ITEMS TABLE -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-dark text-white fw-bold">Items List</div>
+        <div class="card-body p-0">
+            <table class="table table-bordered mb-0 align-middle">
+                <thead class="table-secondary text-center">
+                    <tr>
+                        <th style="width: 14%;">Category</th>
+                        <th style="width: 22%;">Item Name & Desc</th>
+                        <th style="width: 8%;">Qty</th>
+                        <th style="width: 11%;">Unit Price</th>
+                        <th style="width: 12%;" class="item-tax-col">Tax</th>
+                        <th style="width: 10%;">Total</th>
+                        <th style="width: 5%;">#</th>
+                    </tr>
+                </thead>
+                <tbody id="items-table-body">
+                    {% if edit_items %}
+                        {% for item in edit_items %}
+                        <tr>
+                            <td><select class="form-select category-select form-select-sm"><option value="">-- Cat --</option>{% for cat in categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}</select></td>
+                            <td>
+                                <input type="hidden" name="inventory_item_id[]" class="inv-item-id" value="{% if item.inventory_item %}{{ item.inventory_item.id }}{% endif %}">
+                                <input type="text" name="item_name[]" class="form-control form-control-sm mb-1 item-name-input" value="{{ item.item_name }}" required>
+                                <input type="text" name="description[]" class="form-control form-control-sm" value="{{ item.description }}">
+                                <input type="hidden" name="unit[]" value="{{ item.unit|default:'' }}">
+                            </td>
+                            <td><input type="number" step="any" name="qty[]" class="form-control form-control-sm text-center item-qty" value="{{ item.qty }}" required oninput="calculateTotals()"></td>
+                            <td><input type="number" step="any" name="price[]" class="form-control form-control-sm text-center item-price" value="{{ item.unit_price }}" required oninput="calculateTotals()"></td>
+                            <td class="item-tax-col">
+                                <select name="item_tax[]" class="form-select form-select-sm item-tax-select" onchange="calculateTotals()">
+                                    <option value="">- No Tax -</option>
+                                    {% for t in taxes %}<option value="{{ t.id }}" data-rate="{{ t.rate }}" {% if item.item_tax_id == t.id %}selected{% endif %}>{{ t.name }} ({{ t.rate }}%)</option>{% endfor %}
+                                </select>
+                                <input type="hidden" name="tax_amount[]" class="item-tax-amt-input" value="{{ item.tax_amount }}">
+                                <small class="text-danger fw-bold item-tax-display d-block text-center mt-1">0.00</small>
+                            </td>
+                            <td class="text-center fw-bold item-row-total">0.00</td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="$(this).closest('tr').remove(); calculateTotals();"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td><select class="form-select category-select form-select-sm"><option value="">-- Cat --</option>{% for cat in categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}</select></td>
+                            <td>
+                                <input type="hidden" name="inventory_item_id[]" class="inv-item-id">
+                                <input type="text" name="item_name[]" class="form-control form-control-sm mb-1 item-name-input" placeholder="Name" required>
+                                <input type="text" name="description[]" class="form-control form-control-sm" placeholder="Desc">
+                                <input type="hidden" name="unit[]" value="">
+                            </td>
+                            <td><input type="number" step="any" name="qty[]" class="form-control form-control-sm text-center item-qty" value="1" required oninput="calculateTotals()"></td>
+                            <td><input type="number" step="any" name="price[]" class="form-control form-control-sm text-center item-price" value="0" required oninput="calculateTotals()"></td>
+                            <td class="item-tax-col">
+                                <select name="item_tax[]" class="form-select form-select-sm item-tax-select" onchange="calculateTotals()">
+                                    <option value="">- No Tax -</option>
+                                    {% for t in taxes %}<option value="{{ t.id }}" data-rate="{{ t.rate }}">{{ t.name }} ({{ t.rate }}%)</option>{% endfor %}
+                                </select>
+                                <input type="hidden" name="tax_amount[]" class="item-tax-amt-input" value="0">
+                                <small class="text-danger fw-bold item-tax-display d-block text-center mt-1">0.00</small>
+                            </td>
+                            <td class="text-center fw-bold item-row-total">0.00</td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="$(this).closest('tr').remove(); calculateTotals();"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white">
+            <button type="button" class="btn btn-sm btn-secondary fw-bold" onclick="addItemRow()"><i class="bi bi-plus-circle"></i> Add Row</button>
+        </div>
+    </div>
+
+    <!-- TOTALS SECTION -->
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="fw-bold">Terms & Conditions</label>
+            <textarea name="terms_conditions" class="form-control" rows="4">{{ form.instance.terms_conditions }}</textarea>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 bg-light p-3">
+                <div class="d-flex justify-content-between mb-2"><span class="fw-bold">Sub Total:</span><span id="display-sub-total" class="fw-bold">PKR 0.00</span></div>
+                <div class="d-flex justify-content-between mb-2 align-items-center">
+                    <span class="fw-bold">Discount (PKR):</span>
+                    <input type="number" step="any" name="discount" id="inv-discount" class="form-control form-control-sm w-25 text-end" value="{{ form.instance.discount|default:0 }}" oninput="calculateTotals()">
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="fw-bold text-danger">Total Tax:</span><span id="display-tax-total" class="fw-bold text-danger">PKR 0.00</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="fw-bold fs-5">Grand Total:</span><span id="display-grand-total" class="fw-bold fs-4 text-success">PKR 0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-end mt-4"><button type="submit" class="btn btn-success fw-bold px-5 fs-5"><i class="bi bi-save"></i> Save Invoice</button></div>
+</form>
+
+<script>
+    $(document).ready(function() {
+        $('#client_select').select2({ tags: true, width: '100%' });
+        $('.category-select').select2({ tags: true, width: '100%' });
+        toggleTaxMode();
+    });
+
+    function toggleTaxMode() {
+        var mode = $('#tax_type').val();
+        if(mode === 'Global') { $('#global_tax_div').removeClass('d-none'); $('.item-tax-col').addClass('d-none'); }
+        else if(mode === 'Item') { $('#global_tax_div').addClass('d-none'); $('.item-tax-col').removeClass('d-none'); }
+        else { $('#global_tax_div').addClass('d-none'); $('.item-tax-col').addClass('d-none'); }
+        calculateTotals();
+    }
+
+    function addItemRow() {
+        var tr = `<tr>
+            <td><select class="form-select category-select form-select-sm"><option value="">-- Cat --</option>{% for cat in categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}</select></td>
+            <td>
+                <input type="hidden" name="inventory_item_id[]" class="inv-item-id">
+                <input type="text" name="item_name[]" class="form-control form-control-sm mb-1 item-name-input" placeholder="Name" required>
+                <input type="text" name="description[]" class="form-control form-control-sm" placeholder="Desc">
+                <input type="hidden" name="unit[]" value="">
+            </td>
+            <td><input type="number" step="any" name="qty[]" class="form-control form-control-sm text-center item-qty" value="1" required oninput="calculateTotals()"></td>
+            <td><input type="number" step="any" name="price[]" class="form-control form-control-sm text-center item-price" value="0" required oninput="calculateTotals()"></td>
+            <td class="item-tax-col ${$('#tax_type').val() === 'Item' ? '' : 'd-none'}">
+                <select name="item_tax[]" class="form-select form-select-sm item-tax-select" onchange="calculateTotals()">
+                    <option value="">- No Tax -</option>
+                    {% for t in taxes %}<option value="{{ t.id }}" data-rate="{{ t.rate }}">{{ t.name }} ({{ t.rate }}%)</option>{% endfor %}
+                </select>
+                <input type="hidden" name="tax_amount[]" class="item-tax-amt-input" value="0">
+                <small class="text-danger fw-bold item-tax-display d-block text-center mt-1">0.00</small>
+            </td>
+            <td class="text-center fw-bold item-row-total">0.00</td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="$(this).closest('tr').remove(); calculateTotals();"><i class="bi bi-trash"></i></button></td>
+        </tr>`;
+        $('#items-table-body').append(tr);
+        $('.category-select').last().select2({ tags: true, width: '100%' });
+    }
+
+    function calculateTotals() {
+        var mode = $('#tax_type').val();
+        var subTotal = 0; var totalTax = 0;
+
+        $('#items-table-body tr').each(function() {
+            var qty = parseFloat($(this).find('.item-qty').val()) || 0;
+            var price = parseFloat($(this).find('.item-price').val()) || 0;
+            var baseRowTotal = qty * price;
+            
+            var itemTaxAmt = 0;
+            if(mode === 'Item') {
+                var rate = parseFloat($(this).find('.item-tax-select option:selected').attr('data-rate')) || 0;
+                itemTaxAmt = baseRowTotal * (rate / 100);
+                $(this).find('.item-tax-display').text(itemTaxAmt.toFixed(2));
+                $(this).find('.item-tax-amt-input').val(itemTaxAmt.toFixed(2));
+            } else {
+                $(this).find('.item-tax-display').text('0.00');
+                $(this).find('.item-tax-amt-input').val(0);
+            }
+
+            var finalRowTotal = baseRowTotal + itemTaxAmt;
+            $(this).find('.item-row-total').text(finalRowTotal.toFixed(2));
+            
+            subTotal += baseRowTotal;
+            totalTax += itemTaxAmt;
+        });
+
+        var discount = parseFloat($('#inv-discount').val()) || 0;
+        var taxableAmount = Math.max(0, subTotal - discount);
+
+        if(mode === 'Global') {
+            var gRate = parseFloat($('#global_tax option:selected').attr('data-rate')) || 0;
+            totalTax = taxableAmount * (gRate / 100);
+        }
+
+        $('#calc_sub_total').val(subTotal.toFixed(2));
+        $('#display-sub-total').text('PKR ' + subTotal.toLocaleString('en-US', {minimumFractionDigits:2}));
+        
+        $('#calc_tax_amount').val(totalTax.toFixed(2));
+        $('#display-tax-total').text('PKR ' + totalTax.toLocaleString('en-US', {minimumFractionDigits:2}));
+        
+        var grandTotal = taxableAmount + totalTax;
+        $('#calc_grand_total').val(grandTotal.toFixed(2));
+        $('#display-grand-total').text('PKR ' + grandTotal.toLocaleString('en-US', {minimumFractionDigits:2}));
+    }
+</script>
+{% endblock %}

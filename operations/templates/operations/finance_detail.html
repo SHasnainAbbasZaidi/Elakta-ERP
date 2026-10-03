@@ -1,0 +1,10 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4"><div><p class="text-muted small mb-1">FINANCE / TRANSACTION #{{ bill.id }}</p><h2>{{ bill.category }}</h2></div><a href="{% url 'finance_list' %}" class="btn btn-light border">Back to finance</a></div>
+<div class="card erp-form"><div class="card-body p-4">
+<h3 class="mb-4">PKR {{ bill.amount|floatformat:2 }}</h3>
+<dl class="row"><dt class="col-sm-4">Date</dt><dd class="col-sm-8">{{ bill.date }}</dd><dt class="col-sm-4">Company</dt><dd class="col-sm-8">{{ bill.company|default:'—' }}</dd><dt class="col-sm-4">Client</dt><dd class="col-sm-8">{{ bill.client|default:'—' }}</dd><dt class="col-sm-4">Vendor</dt><dd class="col-sm-8">{{ bill.vendor|default:'—' }}</dd><dt class="col-sm-4">Payment status</dt><dd class="col-sm-8">{{ bill.payment_status|default:'—' }}</dd><dt class="col-sm-4">Payment method</dt><dd class="col-sm-8">{{ bill.get_payment_method_display|default:'—' }}</dd><dt class="col-sm-4">Reference</dt><dd class="col-sm-8">{{ bill.reference_number|default:'—' }}</dd><dt class="col-sm-4">Remarks</dt><dd class="col-sm-8">{{ bill.remarks|default:'—'|linebreaksbr }}</dd></dl>
+{% if bill.receipt_image %}<a href="{{ bill.receipt_image.url }}" class="btn btn-light border">View attachment</a>{% endif %}
+<a href="{% url 'print_receipt' bill.id %}" class="btn btn-primary">Print receipt</a>
+</div></div>
+{% endblock %}

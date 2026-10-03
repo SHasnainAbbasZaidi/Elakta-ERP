@@ -1,0 +1,363 @@
+{% extends 'operations/base.html' %}
+{% block title %}Dashboard · Elakta ERP{% endblock %}
+
+{% block content %}
+<!-- HEADER & FILTER TOOLBAR -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-speedometer2 text-primary"></i> Business overview
+        </h2>
+        <p class="text-muted small mb-0">Keep track of revenue, sales opportunities, and the work ahead.</p>
+    </div>
+    
+    <!-- DATE FILTER WITH MODERN ELEVATION -->
+    <form method="GET" class="d-flex flex-wrap align-items-center bg-white p-2 rounded-3 shadow-sm border gap-2">
+        {% include 'operations/date_filter.html' %}
+    </form>
+</div>
+
+<div class="quick-actions mb-4">
+    <span class="text-muted small fw-semibold">QUICK CREATE</span>
+    <a href="{% url 'create_invoice' %}" class="btn btn-light"><i class="bi bi-plus-lg me-2"></i>Invoice</a>
+    <a href="{% url 'create_quotation' %}" class="btn btn-light"><i class="bi bi-file-earmark-plus me-2"></i>Quotation</a>
+    <a href="{% url 'crm_list' %}" class="btn btn-light"><i class="bi bi-person-plus me-2"></i>Sales lead</a>
+    <a href="{% url 'daily_tasks' %}" class="btn btn-light"><i class="bi bi-check2-square me-2"></i>Task</a>
+</div>
+<!-- CLICKABLE KPI CARDS -->
+<div class="row g-3 mb-4">
+    <!-- Invoices -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100 border-0 bg-primary text-white position-relative overflow-hidden shadow-sm" style="cursor:pointer; transition: all 0.2s ease-in-out;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 24px rgba(59,130,246,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.03)';" onclick="window.location.href='{% url 'invoice_list' %}'">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold small opacity-75 letter-spacing-1">Total Invoices</span>
+                    <div class="p-2 rounded-3 bg-white bg-opacity-25 text-white">
+                        <i class="bi bi-receipt fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="mb-1 fw-bold font-mono format-num">{{ total_inv_amount }}</h3>
+                <div class="small opacity-75 mt-2 d-flex align-items-center gap-1">
+                    <i class="bi bi-arrow-up-right"></i> Click to inspect receivables
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quotations -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100 border-0 text-white position-relative overflow-hidden shadow-sm" style="background-color: #0284c7; cursor:pointer; transition: all 0.2s ease-in-out;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 24px rgba(2,132,199,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.03)';" onclick="window.location.href='{% url 'quotation_list' %}'">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold small opacity-75 letter-spacing-1">Total Quotations</span>
+                    <div class="p-2 rounded-3 bg-white bg-opacity-25 text-white">
+                        <i class="bi bi-file-earmark-text fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="mb-1 fw-bold font-mono format-num">{{ total_quo_amount }}</h3>
+                <div class="small opacity-75 mt-2 d-flex align-items-center gap-1">
+                    <i class="bi bi-arrow-up-right"></i> Active pipeline value
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100 border-0 text-white position-relative overflow-hidden shadow-sm" style="background-color: #e11d48; cursor:pointer; transition: all 0.2s ease-in-out;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 24px rgba(225,29,72,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.03)';" onclick="window.location.href='{% url 'finance_list' %}?category=Expense'">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold small opacity-75 letter-spacing-1">Total Expenses</span>
+                    <div class="p-2 rounded-3 bg-white bg-opacity-25 text-white">
+                        <i class="bi bi-graph-down-arrow fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="mb-1 fw-bold font-mono format-num">{{ total_exp_amount }}</h3>
+                <div class="small opacity-75 mt-2 d-flex align-items-center gap-1">
+                    <i class="bi bi-wallet2"></i> Operational disbursements
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if user.is_superuser or user.profile.role.permissions.dashboard.complaints %}
+    <!-- Complaints -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100 border-0 position-relative overflow-hidden shadow-sm" style="background-color: #f59e0b; color: #1e293b; cursor:pointer; transition: all 0.2s ease-in-out;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 24px rgba(245,158,11,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.03)';" onclick="window.location.href='{% url 'complaints' %}'">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-uppercase fw-bold small text-dark opacity-75 letter-spacing-1">Open Complaints</span>
+                    <div class="p-2 rounded-3 bg-dark bg-opacity-10 text-dark">
+                        <i class="bi bi-headset fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="mb-1 fw-bold font-mono text-dark">{{ total_open_comp }}</h3>
+                <div class="small text-dark opacity-75 mt-2 fw-semibold">
+                    <span class="badge bg-dark bg-opacity-25 text-dark rounded-pill">{{ todays_comp_count }} Logged Today</span>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+</div>
+
+<!-- CHARTS SECTION -->
+<div class="row g-3 mb-4">
+    <!-- Invoice Payment Status (Pie Chart) -->
+    <div class="col-12 col-lg-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <div class="p-1.5 rounded-2 bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-pie-chart-fill"></i>
+                    </div>
+                    <span>Invoice Status (Amount)</span>
+                </div>
+                <span class="text-muted small">Live Balance Breakdown</span>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center p-4" style="position: relative; height: 280px;">
+                {% if total_inv_amount %}<canvas id="invoicePieChart" aria-label="Invoice payment amounts" role="img"></canvas>{% else %}<div class="empty-state"><i class="bi bi-receipt"></i><h6>No invoices in this period</h6><p>Your payment breakdown will appear here.</p><a href="{% url 'create_invoice' %}">Create an invoice →</a></div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quotation Approvals (Donut Chart) -->
+    <div class="col-12 col-lg-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <div class="p-1.5 rounded-2 bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <span>Quotation Conversions</span>
+                </div>
+                <span class="text-muted small">Approved vs Pending</span>
+            </div>
+            <div class="card-body d-flex justify-content-center align-items-center p-4" style="position: relative; height: 280px;">
+                {% if approved_quo_count or pending_quo_count %}<canvas id="quoDonutChart" aria-label="Quotation approval counts" role="img"></canvas>{% else %}<div class="empty-state"><i class="bi bi-file-earmark-text"></i><h6>Your sales pipeline starts here</h6><p>Create a quotation to track its approval.</p><a href="{% url 'create_quotation' %}">Create a quotation →</a></div>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DATA LISTS ROW -->
+<div class="row g-3">
+    {% if user.is_superuser or user.profile.role.permissions.dashboard.tasks %}
+    <!-- Daily Tasks -->
+    <div class="col-12 col-lg-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-dark text-white py-3 border-0 d-flex align-items-center justify-content-between">
+                <div class="fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-list-check text-primary"></i>
+                    <span>My Daily Tasks</span>
+                </div>
+                <a href="{% url 'daily_tasks' %}" class="btn btn-sm btn-outline-light py-0 px-2 text-decoration-none" style="font-size: 0.75rem;">View All</a>
+            </div>
+            <ul class="list-group list-group-flush divide-y">
+                {% for t in my_tasks %}
+                <li class="list-group-item p-3 d-flex justify-content-between align-items-center" style="cursor:pointer; transition: background 0.15s ease;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='transparent'" onclick="window.location.href='{% url 'daily_tasks' %}'">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">{{ t.task_type }}</span>
+                            {% if t.client %}
+                            <strong class="text-dark small">{{ t.client.name }}</strong>
+                            {% endif %}
+                        </div>
+                        <p class="text-muted small mb-0">{{ t.task_details|truncatechars:45 }}</p>
+                    </div>
+                    <i class="bi bi-chevron-right text-muted small"></i>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-center text-muted py-5">
+                    <i class="bi bi-clipboard2-check fs-2 text-secondary opacity-50 d-block mb-2"></i>
+                    No open tasks assigned right now.
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {% endif %}
+    <!-- Maintenance Overview -->
+    <div class="col-12 col-lg-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-dark text-white py-3 border-0 d-flex align-items-center justify-content-between">
+                <div class="fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-tools text-warning"></i>
+                    <span>Maintenance Overview</span>
+                </div>
+                <a href="{% url 'maintenance' %}" class="btn btn-sm btn-outline-light py-0 px-2 text-decoration-none" style="font-size: 0.75rem;">Contracts</a>
+            </div>
+            <div class="card-body p-3">
+                {% if last_maint %}
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <div class="d-flex align-items-center gap-2 text-muted small mb-1">
+                        <i class="bi bi-clock-history text-primary"></i>
+                        <span class="fw-bold text-uppercase" style="font-size: 0.7rem;">Last Serviced Client</span>
+                    </div>
+                    <div class="fw-bold text-dark">{{ last_maint.contract.client.name }}</div>
+                    <div class="text-muted small">{{ last_maint.service_date|date:"M d, Y" }}</div>
+                </div>
+                {% endif %}
+                
+                <h6 class="fw-bold text-dark border-bottom pb-2 mb-2 d-flex align-items-center justify-content-between">
+                    <span class="d-flex align-items-center gap-1.5 small text-uppercase letter-spacing-1">
+                        <i class="bi bi-exclamation-triangle-fill text-danger"></i> Upcoming (Next 3 Days)
+                    </span>
+                </h6>
+                <ul class="list-group list-group-flush">
+                    {% for up in upcoming_maint %}
+                    <li class="list-group-item border-0 px-0 py-2 d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="window.location.href='{% url 'maintenance' %}'">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-building text-secondary"></i>
+                            <span class="fw-semibold text-dark small">{{ up.contract.client.name }}</span>
+                        </div>
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill font-mono px-2.5 py-1">
+                            {{ up.days_left }} Days Left
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item border-0 px-0 py-3 text-muted small text-center">
+                        <i class="bi bi-check2-circle text-success me-1"></i> No urgent service due in the next 3 days.
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin: User Sales Tracking -->
+    {% if user.is_superuser %}
+    <div class="col-12 col-lg-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-dark text-white py-3 border-0 d-flex align-items-center justify-content-between">
+                <div class="fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-people text-info"></i>
+                    <span>Sales Users Activity</span>
+                </div>
+                <span class="badge bg-secondary bg-opacity-50 text-white rounded-pill">Team Roster</span>
+            </div>
+            <ul class="list-group list-group-flush divide-y">
+                {% for u in user_docs %}
+                <li class="list-group-item p-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle bg-light border p-2 text-dark fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                            {{ u.username|slice:":1"|upper }}
+                        </div>
+                        <div>
+                            <span class="fw-semibold text-dark small d-block">{{ u.username }}</span>
+                            <span class="text-muted" style="font-size: 0.72rem;">Field Executive</span>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1.5">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1 font-mono" title="Invoices Created">
+                            {{ u.inv_count }} Inv
+                        </span>
+                        <span class="badge bg-info bg-opacity-10 text-dark border border-info border-opacity-25 rounded-pill px-2 py-1 font-mono" title="Quotations Created">
+                            {{ u.quo_count }} Quo
+                        </span>
+                    </div>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-center text-muted py-5">
+                    <i class="bi bi-person-x fs-2 text-secondary opacity-50 d-block mb-2"></i>
+                    No user sales activity in this period.
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- INITIALIZE CHART.JS DATA -->
+<script>
+    function toggleCustomDates() {
+        if ($('#dash_filter').val() === 'custom') { 
+            $('#custom_dates').removeClass('d-none'); 
+        } else { 
+            $('#custom_dates').addClass('d-none'); 
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Format Currency dynamically
+        document.querySelectorAll('.format-num').forEach(function(el) {
+            var val = parseFloat(el.innerText);
+            if (!isNaN(val)) {
+                el.innerText = 'PKR ' + Math.round(val).toLocaleString('en-US');
+            }
+        });
+
+        // 1. Invoice Payment Pie Chart
+        const invCanvas = document.getElementById('invoicePieChart');
+        if (invCanvas && typeof Chart !== 'undefined') {
+            const invCtx = invCanvas.getContext('2d');
+            new Chart(invCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Paid', 'Unpaid', 'Overdue'],
+                    datasets: [{
+                        data: [
+                            {{ paid_inv_amount|default:0 }}, 
+                            {{ unpaid_inv_amount|default:0 }}, 
+                            {{ overdue_inv_amount|default:0 }}
+                        ],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                padding: 16,
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: '600' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Quotation Conversion Donut Chart
+        const quoCanvas = document.getElementById('quoDonutChart');
+        if (quoCanvas && typeof Chart !== 'undefined') {
+            const quoCtx = quoCanvas.getContext('2d');
+            const approved = {{ approved_quo_count|default:0 }};
+            const pending = {{ pending_quo_count|default:0 }};
+            
+            new Chart(quoCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Approved', 'Pending / Draft'],
+                    datasets: [{
+                        data: [approved, pending],
+                        backgroundColor: ['#0284c7', '#e2e8f0'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                padding: 16,
+                                font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: '600' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

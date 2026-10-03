@@ -1,0 +1,195 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-tools text-primary"></i> Maintenance & Service Contracts</h2>
+</div>
+<hr>
+
+<!-- ADD CONTRACT FORM (Admin Only) -->
+{% if user.is_superuser %}
+<div class="card shadow-sm mb-4 border-0">
+    <div class="card-header bg-primary text-white fw-bold">Create New Service Contract</div>
+    <div class="card-body bg-light">
+        <form method="POST" action="{% url 'add_contract' %}">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold text-primary">Client Name (Search or Type New) *</label>
+                    <select name="client_select" id="client_select" class="form-select" required>
+                        <option value="">-- Type to Search or Create --</option>
+                        {% for c in clients %}
+                            <option value="{{ c.id }}" data-address="{{ c.address }}" data-contact="{{ c.contact }}" data-company="{{ c.company_name }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <div id="new_client_fields" class="mt-2 p-3 bg-white border border-primary rounded d-none shadow-sm">
+                        <span class="badge bg-primary mb-2">New Client Detected! Add details (Optional)</span>
+                        <input type="text" name="new_client_company" class="form-control form-control-sm mb-2" placeholder="Company Name">
+                        <input type="text" name="new_client_contact" class="form-control form-control-sm mb-2" placeholder="Contact Number">
+                        <input type="text" name="new_client_address" class="form-control form-control-sm" placeholder="Address">
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Company Profile (Vendor) *</label>
+                    <select name="company" class="form-select" required>
+                        <option value="">-- Select Company --</option>
+                        {% for comp in companies %}<option value="{{ comp.id }}">{{ comp.name }}</option>{% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Visit Frequency *</label>
+                    <select name="visit_frequency_days" class="form-select" required>
+                        <option value="15">Every 15 Days</option>
+                        <option value="30">Every 30 Days</option>
+                        <option value="90">Every 3 Months</option>
+                        <option value="180">Every 6 Months</option>
+                        <option value="365">Yearly</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Start Date *</label>
+                    <input type="date" name="start_date" class="form-control" required>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">End Date *</label>
+                    <input type="date" name="end_date" class="form-control" required>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Contract Charges (Rs) *</label>
+                    <input type="number" step="0.01" name="charges" class="form-control" required placeholder="0.00">
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Covered Equipment & Scheduled Jobs *</label>
+                    <textarea name="covered_equipment" class="form-control" rows="3" required placeholder="e.g., 2x AC Units, Firewall Security Audit, Bi-weekly cleanings..."></textarea>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Terms & Conditions</label>
+                    <textarea name="terms_conditions" class="form-control" rows="3">1. Services will be provided as per schedule.
+2. Replacement of hardware parts is excluded unless specified.
+3. Payment must be cleared within 7 days of invoice.</textarea>
+                </div>
+            </div>
+            
+            <div class="text-end">
+                <button type="submit" class="btn btn-success fw-bold px-5 fs-5"><i class="bi bi-file-earmark-check"></i> Save & Print Contract</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- EXPIRING SOON REMINDERS (Shown if days left <= 5) -->
+{% if reminders %}
+<div class="card shadow-sm border-danger mb-4">
+    <div class="card-header bg-danger text-white fw-bold"><i class="bi bi-bell-fill"></i> Contract Expiry Alerts (Expiring in 5 Days or Less)</div>
+    <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+            {% for r in reminders %}
+            <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div>
+                    <strong>Client: {{ r.client.name }}</strong> â€” Contract #{{ r.id }} expires on <span class="text-danger fw-bold">{{ r.end_date }}</span>
+                </div>
+                <span class="badge bg-danger fs-6">{{ r.days_left }} Days Left</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<!-- ACTIVE CONTRACT LIST (Admin Only) -->
+{% if user.is_superuser %}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-dark text-white fw-bold"><i class="bi bi-shield-check"></i> Active Service Contracts</div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-secondary">
+                <tr>
+                    <th>#</th>
+                    <th>Client</th>
+                    <th>Vendor Company</th>
+                    <th>Duration</th>
+                    <th>Charges</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in contracts %}
+                <tr>
+                    <td class="fw-bold align-middle">{{ c.id }}</td>
+                    <td class="align-middle fw-bold">{{ c.client.name }}</td>
+                    <td class="align-middle">{{ c.company.name|default:"Default" }}</td>
+                    <td class="align-middle small">{{ c.start_date }} to {{ c.end_date }}</td>
+                    <td class="align-middle fw-bold text-success">Rs {{ c.charges }}</td>
+                    <td class="align-middle text-center">
+                        <a href="{% url 'print_contract' c.id %}" target="_blank" class="btn btn-sm btn-dark fw-bold"><i class="bi bi-printer"></i> Print Contract</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No contracts found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- RECENT SERVICE VISITS (Clickable Rows) -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-secondary text-white fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-check"></i> Recent Service Visits</span>
+        <a href="{% url 'add_service' %}" class="btn btn-sm btn-light text-secondary fw-bold">+ Record Visit</a>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Technician</th>
+                    <th>Remarks</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in visits %}
+                <!-- Clickable Row redirects to printable service visit details -->
+                <tr style="cursor: pointer;" onclick="window.location='{% url 'service_visit_detail' v.id %}';" title="Click to view details">
+                    <td class="fw-bold text-primary align-middle">{{ v.service_date|date:"M d, Y" }}</td>
+                    <td class="align-middle fw-bold">{{ v.client.name }}</td>
+                    <td class="align-middle">{{ v.technician.name|default:"Unassigned" }}</td>
+                    <td class="align-middle small text-muted">{{ v.remarks|truncatechars:50 }}</td>
+                    <td class="align-middle text-center">
+                        <a href="{% url 'print_service' v.id %}" target="_blank" class="btn btn-sm btn-dark" onclick="event.stopPropagation();"><i class="bi bi-printer"></i> Print</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No service visits recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#client_select').select2({ tags: true, placeholder: "-- Type to Search or Create --", width: '100%' });
+        $('#client_select').on('change', function() {
+            var selected = $(this).find(':selected');
+            var isNew = selected.attr('data-address') === undefined && $(this).val() !== "";
+            if (isNew) {
+                $('#new_client_fields').removeClass('d-none');
+            } else {
+                $('#new_client_fields').addClass('d-none');
+            }
+        });
+    });
+</script>
+{% endblock %}

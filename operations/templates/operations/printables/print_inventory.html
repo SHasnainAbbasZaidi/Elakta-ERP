@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Master List</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style> body { background: white; padding: 40px; } @media print { .no-print { display: none; } } </style>
+</head>
+<body>
+    <div class="text-end mb-4 no-print">
+        <button class="btn btn-primary" onclick="window.print()">Print List</button>
+        <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+    </div>
+
+    <div class="text-center border-bottom pb-3 mb-4">
+        <h2 class="text-uppercase fw-bold">Inventory Master List</h2>
+        <p class="text-muted mb-0">Generated on: {% now "F j, Y, h:i A" %}</p>
+    </div>
+
+    <table class="table table-bordered table-sm">
+        <thead class="table-dark">
+            <tr>
+                <th width="15%">Item Code</th>
+                <th width="35%">Item Name</th>
+                <th width="15%">Location</th>
+                <th width="10%">Unit</th>
+                <th width="10%" class="text-center">Qty in Stock</th>
+                <th width="15%" class="text-end">Avg Cost (Rs)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="fw-bold">{{ item.item_code|default:"-" }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.location.name|default:"-" }}</td>
+                <td>{{ item.unit.name|default:"-" }}</td>
+                <td class="text-center fw-bold">{{ item.qty }}</td>
+                <td class="text-end">{{ item.avg_unit_cost }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

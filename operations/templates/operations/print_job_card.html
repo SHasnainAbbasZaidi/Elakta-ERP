@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Job Card - {{ employee.employee_id }}</title>
+    <!-- Bootstrap ONLY for the Admin Editor Panel. Hidden in Print. -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" class="no-print">
+    <style>
+        @media print {
+            /* Force exact CR80 Dimensions in Print Dialog */
+            @page { size: 54mm 86mm; margin: 0; }
+            html, body { width: 54mm; height: 86mm; margin: 0 !important; padding: 0 !important; background: white !important; }
+            
+            .no-print { display: none !important; }
+            
+            /* Break Flexbox to prevent A4 scaling */
+            .main-wrapper { display: block !important; margin: 0 !important; padding: 0 !important; width: 54mm !important; }
+            .id-card { box-shadow: none !important; border: none !important; margin: 0 !important; page-break-after: always; }
+        }
+        
+        body { font-family: 'Arial', sans-serif; background-color: #333; margin: 0; display: flex; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        
+        /* Left Editor Panel */
+        .editor-panel { width: 340px; background: #1e1e1e; color: #fff; padding: 20px; height: 100vh; overflow-y: auto; position: fixed; left: 0; top: 0; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
+        .editor-panel label { font-size: 11px; font-weight: bold; color: #aaa; margin-bottom: 2px; text-transform: uppercase; }
+        .editor-panel input, .editor-panel select, .editor-panel textarea { background: #2a2a2a; border: 1px solid #444; color: white; margin-bottom: 12px; font-size: 13px; }
+        .editor-panel input:focus, .editor-panel select:focus, .editor-panel textarea:focus { background: #333; color: white; border-color: #0d6efd; box-shadow: none; }
+        
+        /* Print Area Wrapper */
+        .main-wrapper { margin-left: 340px; width: calc(100% - 340px); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 20px; box-sizing: border-box; }
+
+        /* ID Card Core */
+        .id-card {
+            width: 54mm; height: 86mm; background-color: white; position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4); overflow: hidden; box-sizing: border-box;
+        }
+
+        /* Bulletproof Background Image (Always Prints) */
+        .bg-img {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            z-index: 1; /* Keep it at the very back */
+        }
+
+        /* --- DRAGGABLE/ADJUSTABLE ELEMENTS --- */
+        .vt-element { position: absolute; box-sizing: border-box; transition: outline 0.1s; line-height: 1.1; white-space: nowrap; z-index: 10; /* Keep text above background */ }
+        .vt-element.active-edit { outline: 2px dashed #0d6efd; outline-offset: 1px; z-index: 99 !important; background: rgba(13, 110, 253, 0.2); }
+        
+        /* Fixed Image Border */
+        #vt-image-box { border: 1.5px solid #222; background: transparent; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        #vt-image-box img { width: 100%; height: 100%; object-fit: cover; }
+
+        #vt-department { text-align: center; font-weight: bold; }
+        #vt-name-block { text-align: center; }
+        .vt-name { font-size: 1em; font-weight: bold; margin: 0; }
+        .vt-desig { font-size: 0.85em; margin: 2px 0 0 0; }
+
+        /* Resizable Logos */
+        #vt-company-logo img, #vt-back-logo img { width: 100%; height: 100%; object-fit: contain; }
+        #vt-qr-code img { width: 100%; height: 100%; }
+
+        /* Backside Specifics */
+        #vt-back-title { text-align: center; font-weight: bold; text-decoration: underline; }
+        #vt-back-instructions { white-space: pre-wrap; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+    <!-- VISUAL DESIGNER SIDEBAR (Admins Only, Hidden in Print) -->
+    <div class="editor-panel no-print">
+        <h5 class="fw-bold text-primary mb-3"><i class="bi bi-magic"></i> Card Editor</h5>
+        
+        <label>1. Select Element to Adjust</label>
+        <select id="el-select" class="form-select form-select-sm">
+            <optgroup label="Header & Photo">
+                <option value="vt-department">Department Text</option>
+                <option value="vt-image-box">Employee Photo Box</option>
+                <option value="vt-name-block">Name & Designation</option>
+            </optgroup>
+            <optgroup label="Individual Data Fields">
+                <option value="vt-cnic">CNIC Number</option>
+                <option value="vt-contact">Contact Number</option>
+                <option value="vt-category">Category (Employee)</option>
+                <option value="vt-validity">Validity Date</option>
+                <option value="vt-empid">Employee ID</option>
+                <option value="vt-company">Company Name</option>
+            </optgroup>
+            <optgroup label="Logos & QR Code">
+                <option value="vt-company-logo">Company Logo (Front)</option>
+                <option value="vt-qr-code">QR Code (Front)</option>
+                <option value="vt-back-logo">Company Logo (Back)</option>
+            </optgroup>
+            <optgroup label="Backside">
+                <option value="vt-back-title">Backside Title (Hardcoded)</option>
+                <option value="vt-back-instructions">Backside Instructions</option>
+                <option value="vt-back-emg-name">Emergency Contact Name</option>
+                <option value="vt-back-emg-contact">Emergency Contact No.</option>
+                <option value="vt-back-emg-blood">Blood Group</option>
+            </optgroup>
+        </select>
+
+        <h6 class="border-bottom border-secondary pb-1 mt-3 mb-2">Position & Size (mm)</h6>
+        <div class="row g-2">
+            <div class="col-6"><label>Top (Y)</label><input type="number" step="0.5" id="inp-top" class="form-control form-control-sm"></div>
+            <div class="col-6"><label>Left (X)</label><input type="number" step="0.5" id="inp-left" class="form-control form-control-sm"></div>
+            <div class="col-6"><label>Width</label><input type="number" step="0.5" id="inp-width" class="form-control form-control-sm"></div>
+            <div class="col-6"><label>Height (Image/QR)</label><input type="number" step="0.5" id="inp-height" class="form-control form-control-sm"></div>
+        </div>
+
+        <h6 class="border-bottom border-secondary pb-1 mt-3 mb-2">Typography & Content</h6>
+        <div class="row g-2">
+            <div class="col-6"><label>Font Size (px)</label><input type="number" step="0.5" id="inp-font" class="form-control form-control-sm"></div>
+            <div class="col-6"><label>Text Color</label><input type="color" id="inp-color" class="form-control form-control-sm w-100 p-0 border-0" style="height: 28px;"></div>
+            <div class="col-12">
+                <label>Font Family</label>
+                <select id="inp-font-family" class="form-select form-select-sm">
+                    <option value="'Arial', sans-serif">Arial</option>
+                    <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                    <option value="'Courier New', Courier, monospace">Courier New</option>
+                    <option value="'Georgia', serif">Georgia</option>
+                    <option value="'Verdana', sans-serif">Verdana</option>
+                    <option value="'Tahoma', sans-serif">Tahoma</option>
+                    <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="instruction-edit-block" class="mt-2" style="display: none;">
+            <label class="text-warning">Edit Custom Text</label>
+            <textarea id="inp-text" class="form-control form-control-sm" rows="4"></textarea>
+        </div>
+
+        <hr class="border-secondary mt-4 mb-3">
+        <button onclick="saveTemplateLayout()" class="btn btn-primary fw-bold w-100 mb-2">Save Layout as Default</button>
+        <button onclick="window.print()" class="btn btn-outline-light fw-bold w-100"><i class="bi bi-printer"></i> Print Job Card</button>
+        
+        {% if not template %}
+        <div class="alert alert-danger mt-3 py-2 px-2" style="font-size: 11px;">âš ï¸ No template uploaded via Admin Panel.</div>
+        {% endif %}
+    </div>
+
+    <!-- CARDS DISPLAY WRAPPER -->
+    <div class="main-wrapper">
+        
+        <!-- FRONT SIDE -->
+        <div class="id-card">
+            {% if template and template.background_image %}
+                <!-- Real HTML Image guarantees it prints in all browsers -->
+                <img class="bg-img" src="{{ template.background_image.url }}">
+            {% endif %}
+
+            <div id="vt-department" class="vt-element">{{ employee.department|default:"-" }}</div>
+            
+            <div id="vt-image-box" class="vt-element">
+                {% if employee.image %}<img src="{{ employee.image.url }}" alt="Photo">{% endif %}
+            </div>
+
+            <div id="vt-name-block" class="vt-element">
+                <p class="vt-name">{{ employee.name }}</p>
+                <p class="vt-desig">{{ employee.designation|default:"-" }}</p>
+            </div>
+
+            <div id="vt-cnic" class="vt-element fw-bold">{{ employee.cnic|default:"-" }}</div>
+            <div id="vt-contact" class="vt-element fw-bold">{{ employee.contact_number|default:"-" }}</div>
+            <div id="vt-category" class="vt-element fw-bold">Employee</div>
+            <div id="vt-validity" class="vt-element fw-bold">{{ validity_date|date:"d M Y" }}</div>
+            <div id="vt-empid" class="vt-element fw-bold">{{ employee.employee_id }}</div>
+            <div id="vt-company" class="vt-element fw-bold">{{ employee.company.name|default:"-" }}</div>
+
+            <div id="vt-company-logo" class="vt-element">
+                {% if employee.company and employee.company.logo %}<img src="{{ employee.company.logo.url }}">{% endif %}
+            </div>
+            <div id="vt-qr-code" class="vt-element">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ employee.id }}-{{ employee.employee_id }}-{{ employee.cnic|default:'NOCNIC' }}">
+            </div>
+        </div>
+
+        <!-- BACK SIDE -->
+        <div class="id-card">
+            {% if template and template.back_background_image %}
+                <!-- Real HTML Image guarantees it prints in all browsers -->
+                <img class="bg-img" src="{{ template.back_background_image.url }}">
+            {% endif %}
+
+            <div id="vt-back-title" class="vt-element"></div>
+            <div id="vt-back-instructions" class="vt-element"></div>
+            
+            <div id="vt-back-emg-name" class="vt-element fw-bold"></div>
+            <div id="vt-back-emg-contact" class="vt-element fw-bold"></div>
+            <div id="vt-back-emg-blood" class="vt-element fw-bold text-danger"></div>
+            
+            <div id="vt-back-logo" class="vt-element">
+                {% if employee.company and employee.company.logo %}<img src="{{ employee.company.logo.url }}">{% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- VISUAL EDITOR ENGINE -->
+    <script>
+        // 1. Initial / Default Configuration (Emergency Fields Added)
+        let config = {{ layout_json|safe }};
+        const defaultLayout = {
+            'vt-department': { top: 7, left: 16, width: 36, height: 10, fontSize: 10, fontFamily: "'Arial', sans-serif", color: '#ffffff', text: '' },
+            'vt-image-box': { top: 16, left: 14, width: 26, height: 32, fontSize: 12, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            'vt-name-block': { top: 49, left: 0, width: 54, height: 10, fontSize: 11, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            
+            'vt-cnic': { top: 59, left: 23, width: 30, height: 5, fontSize: 8, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            'vt-contact': { top: 62.5, left: 23, width: 30, height: 5, fontSize: 8, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            'vt-category': { top: 66, left: 23, width: 30, height: 5, fontSize: 8, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            'vt-validity': { top: 69.5, left: 23, width: 30, height: 5, fontSize: 8, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            'vt-empid': { top: 73, left: 23, width: 30, height: 5, fontSize: 8, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            'vt-company': { top: 76.5, left: 23, width: 30, height: 5, fontSize: 8, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            
+            'vt-company-logo': { top: 74, left: 3, width: 35, height: 10, fontSize: 10, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            'vt-qr-code': { top: 70, left: 38, width: 13, height: 13, fontSize: 10, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            
+            'vt-back-title': { top: 10, left: 4, width: 46, height: 6, fontSize: 12, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' },
+            'vt-back-instructions': { top: 18, left: 4, width: 46, height: 25, fontSize: 9, fontFamily: "'Arial', sans-serif", color: '#000000', text: "1. This card is the property of the company.\n2. Must be worn visibly at all times.\n3. Loss must be reported immediately.\n4. Strictly non-transferable." },
+            
+            'vt-back-emg-name': { top: 45, left: 20, width: 30, height: 5, fontSize: 9, fontFamily: "'Arial', sans-serif", color: '#000000', text: "Jane Doe" },
+            'vt-back-emg-contact': { top: 49, left: 20, width: 30, height: 5, fontSize: 9, fontFamily: "'Arial', sans-serif", color: '#000000', text: "0300-1234567" },
+            'vt-back-emg-blood': { top: 53, left: 20, width: 30, height: 5, fontSize: 9, fontFamily: "'Arial', sans-serif", color: '#ff0000', text: "O+" },
+            
+            'vt-back-logo': { top: 65, left: 16, width: 35, height: 11, fontSize: 10, fontFamily: "'Arial', sans-serif", color: '#000000', text: '' }
+        };
+
+        // Merge defaults with DB saved layout
+        for (let key in defaultLayout) { if (!config[key]) config[key] = defaultLayout[key]; }
+
+        const select = document.getElementById('el-select');
+        const iTop = document.getElementById('inp-top');
+        const iLeft = document.getElementById('inp-left');
+        const iWidth = document.getElementById('inp-width');
+        const iHeight = document.getElementById('inp-height');
+        const iFont = document.getElementById('inp-font');
+        const iColor = document.getElementById('inp-color');
+        const iFontFam = document.getElementById('inp-font-family');
+        const iText = document.getElementById('inp-text');
+        const instructionBlock = document.getElementById('instruction-edit-block');
+        
+        // Define which elements are editable as plain text in the sidebar
+        const editableTextElements = ['vt-back-instructions', 'vt-back-emg-name', 'vt-back-emg-contact', 'vt-back-emg-blood'];
+
+        // Apply Styles to screen
+        function applyToScreen() {
+            for (let id in config) {
+                let el = document.getElementById(id);
+                if (!el) continue;
+                el.style.top = config[id].top + 'mm';
+                el.style.left = config[id].left + 'mm';
+                el.style.width = config[id].width + 'mm';
+                el.style.height = config[id].height + 'mm';
+                el.style.fontSize = config[id].fontSize + 'px';
+                el.style.color = config[id].color;
+                el.style.fontFamily = config[id].fontFamily;
+                
+                // Inject custom text for the fields that support it
+                if (editableTextElements.includes(id)) {
+                    el.innerText = config[id].text;
+                }
+            }
+        }
+
+        // Load active element into sidebar
+        function loadActiveElement() {
+            document.querySelectorAll('.vt-element').forEach(e => e.classList.remove('active-edit'));
+            let id = select.value;
+            let el = document.getElementById(id);
+            if (el) el.classList.add('active-edit');
+
+            iTop.value = config[id].top;
+            iLeft.value = config[id].left;
+            iWidth.value = config[id].width;
+            iHeight.value = config[id].height;
+            iFont.value = config[id].fontSize;
+            iColor.value = config[id].color;
+            iFontFam.value = config[id].fontFamily;
+
+            // Show text box only for editable text fields
+            if (editableTextElements.includes(id)) {
+                instructionBlock.style.display = 'block';
+                iText.value = config[id].text;
+            } else {
+                instructionBlock.style.display = 'none';
+            }
+        }
+
+        // Update real-time from sidebar inputs
+        function updateFromInput() {
+            let id = select.value;
+            config[id].top = parseFloat(iTop.value) || 0;
+            config[id].left = parseFloat(iLeft.value) || 0;
+            config[id].width = parseFloat(iWidth.value) || 0;
+            config[id].height = parseFloat(iHeight.value) || 0;
+            config[id].fontSize = parseFloat(iFont.value) || 10;
+            config[id].color = iColor.value;
+            config[id].fontFamily = iFontFam.value;
+            
+            if (editableTextElements.includes(id)) {
+                config[id].text = iText.value;
+            }
+            applyToScreen();
+        }
+
+        // Event Listeners
+        select.addEventListener('change', loadActiveElement);
+        [iTop, iLeft, iWidth, iHeight, iFont, iColor, iFontFam, iText].forEach(inp => inp.addEventListener('input', updateFromInput));
+
+        // Allow clicking elements directly on the card to select them in the menu
+        document.querySelectorAll('.vt-element').forEach(el => {
+            el.addEventListener('click', function(e) {
+                select.value = this.id;
+                loadActiveElement();
+            });
+        });
+
+        // Initialize on page load
+        applyToScreen();
+        loadActiveElement();
+
+        // Save Layout Configuration to DB
+        function saveTemplateLayout() {
+            {% if template %}
+            fetch("{% url 'save_job_card_layout' template.id %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify(config)
+            }).then(res => res.json()).then(data => {
+                if(data.status === 'success') {
+                    alert('âœ… Layout saved! This design is now the global default for all ID cards.');
+                } else { alert('Error saving layout.'); }
+            });
+            {% else %}
+            alert('Cannot save. No template is active in the database.');
+            {% endif %}
+        }
+    </script>
+</body>
+</html>

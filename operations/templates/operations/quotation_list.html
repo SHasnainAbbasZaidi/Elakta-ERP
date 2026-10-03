@@ -1,0 +1,63 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-file-earmark-text text-primary"></i> Quotations Manager</h2>
+    {% if user.is_superuser or user.profile.role.permissions.quotations.add %}
+        <a href="{% url 'create_quotation' %}" class="btn btn-primary fw-bold"><i class="bi bi-plus-circle"></i> Create New Quotation</a>
+    {% endif %}
+</div>
+<div class="row g-3 mb-3">{% for label, card in cards.items %}<div class="col-sm-6 col-xl-3"><div class="card card-body"><span class="text-muted">{{ label }}</span><h3>{{ card.count }}</h3><strong>PKR {{ card.amount|floatformat:2 }}</strong></div></div>{% endfor %}</div><p class="text-muted small">Cards reflect the search and date range below.</p><hr><form method="get" class="d-flex flex-wrap gap-2 mb-3"><input class="form-control w-auto" name="q" value="{{ search_query }}" placeholder="Search number or client">{% include 'operations/date_filter.html' %}</form>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul"></i> Quotation History</span>
+
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Date</th>
+                    <th>Quotation#</th>
+                    <th>Customer</th>
+                    <th>Grand Total</th><th>Profit / Margin</th>
+                    <th>Validity Expiry</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in quotations %}
+                <tr>
+                    <td class="align-middle small">{{ row.quotation.date|date:"M d, Y" }}</td>
+                    <td class="align-middle fw-bold">
+                        <a href="{% url 'print_quotation' row.quotation.id %}" target="_blank" class="text-danger text-decoration-none">{{ row.quotation.quotation_number }}</a>
+                    </td>
+                    <td class="align-middle fw-bold">{{ row.quotation.client.name }}</td>
+                    <td class="align-middle fw-bold text-success">PKR {{ row.quotation.grand_total }}</td><td>{% if row.profit_data.complete %}{{ row.profit_data.profit|floatformat:2 }}<br><small>{% if row.profit_data.margin != None %}{{ row.profit_data.margin|floatformat:2 }}%{% else %}Margin N/A{% endif %}</small>{% else %}<span class="text-muted">Cost incomplete</span>{% endif %}</td>
+                    <td class="align-middle small">{{ row.expiry_date|date:"M d, Y" }}</td>
+                    <td class="align-middle text-center">
+<span class="badge {% if row.status == 'Approved' %}bg-success{% elif row.status == 'Expired' %}bg-danger{% else %}bg-secondary{% endif %}">{{ row.status }}</span>
+                    </td>
+                    <td class="align-middle text-center">
+                        <div class="btn-group shadow-sm">
+                            <a href="{% url 'print_quotation' row.quotation.id %}" target="_blank" class="btn btn-sm btn-dark" title="Print"><i class="bi bi-printer"></i></a>
+                            
+                            {% if user.is_superuser or user.profile.role.permissions.quotations.edit %}
+                                <a href="{% url 'edit_quotation' row.quotation.id %}" class="btn btn-sm btn-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                            {% endif %}
+                            
+                            {% if user.is_superuser or user.profile.role.permissions.quotations.delete %}
+                                <a href="{% url 'delete_quotation' row.quotation.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this quotation?');" title="Delete"><i class="bi bi-trash"></i></a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-5">No quotations found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

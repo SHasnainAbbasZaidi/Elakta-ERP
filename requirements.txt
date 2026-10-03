@@ -1,0 +1,6 @@
+Django>=5.2,<5.3
+Pillow>=11,<13
+requests>=2.32,<3
+pyzk==0.9
+requests>=2.32,<3
+pyzk==0.9

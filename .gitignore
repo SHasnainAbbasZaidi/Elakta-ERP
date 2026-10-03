@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.py[cod]
+db.sqlite3
+media/
+*.log
+.env
+
+# Local dependencies, business data and source backups
+.packages/
+*.sqlite3*
+*.db
+.env.*
+!.env.example
+*.pem
+*.key
+reports-preview.png
+ui-preview.jpg
+full_code.txt
+operations/views_backup.py

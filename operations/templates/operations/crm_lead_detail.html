@@ -1,0 +1,254 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <a href="{% url 'crm_list' %}" class="btn btn-secondary btn-sm me-2"><i class="bi bi-arrow-left"></i> Board</a>
+        <h2 class="d-inline"><i class="bi bi-person-bounding-box text-primary"></i> {{ lead.lead_id }}</h2>
+        <span class="badge ms-2 fs-6
+            {% if lead.status == 'New' %}bg-primary
+            {% elif lead.status == 'Follow-Up' %}bg-warning text-dark
+            {% elif lead.status == 'Converted' %}bg-success
+            {% else %}bg-danger{% endif %}">{{ lead.status }}
+        </span>
+    </div>
+    <button class="btn btn-warning fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#editLeadModal"><i class="bi bi-pencil-square"></i> Edit Lead</button>
+</div>
+<hr>
+
+<div class="row g-4">
+    <!-- LEFT COLUMN: Grid Sections -->
+    <div class="col-md-8">
+        
+        <!-- SEC 1 & 2: Lead & Customer Info -->
+        <div class="card shadow-sm border-0 mb-4 bg-light">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 border-end">
+                        <h6 class="text-primary fw-bold text-uppercase border-bottom pb-2">1. Lead Information</h6>
+                        <p class="mb-1 small"><strong>Date Created:</strong> {{ lead.created_at|date:"M d, Y" }}</p>
+                        <p class="mb-1 small"><strong>Source:</strong> {{ lead.lead_source|default:"-" }}</p>
+                        <p class="mb-1 small"><strong>Campaign:</strong> {{ lead.campaign|default:"-" }}</p>
+                        <p class="mb-1 small"><strong>Priority:</strong> {{ lead.priority }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary fw-bold text-uppercase border-bottom pb-2">2. Customer Information</h6>
+                        <h5 class="fw-bold mb-0">{{ lead.client_name }}</h5>
+                        {% if lead.company_name %}<p class="text-muted mb-1">{{ lead.company_name }}</p>{% endif %}
+                        <p class="mb-1 small"><i class="bi bi-telephone"></i> {{ lead.contact }}</p>
+                        <p class="mb-1 small"><i class="bi bi-envelope"></i> {{ lead.email|default:"No email provided" }}</p>
+                        <p class="mb-1 small"><i class="bi bi-geo-alt"></i> {{ lead.address|default:"-" }} {% if lead.city %}, {{ lead.city }}{% endif %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEC 3 & 7: Requirement & Qualification -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 border-end">
+                        <h6 class="text-success fw-bold text-uppercase border-bottom pb-2">3. Product Requirement</h6>
+                        <p class="mb-1 small"><strong>Category:</strong> {{ lead.product_category|default:"-" }}</p>
+                        <p class="mb-1 small"><strong>Quantity:</strong> {{ lead.quantity }}</p>
+                        <p class="mb-1 small"><strong>Budget:</strong> PKR {{ lead.budget }}</p>
+                        <div class="mt-2 small"><strong>Project Details:</strong><br>{{ lead.project_details|linebreaksbr|default:"No specific details." }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success fw-bold text-uppercase border-bottom pb-2">7. Qualification</h6>
+                        <p class="mb-1 small"><strong>Decision Maker:</strong> {{ lead.decision_maker|default:"-" }}</p>
+                        <p class="mb-1 small"><strong>Timeline:</strong> {{ lead.timeline|default:"-" }}</p>
+                        <p class="mb-1 small"><strong>Probability:</strong> <span class="badge bg-success">{{ lead.probability }}%</span></p>
+                        <div class="progress mt-2" style="height: 10px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ lead.probability }}%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEC 8 & 6: Opportunity & Follow-up -->
+        <div class="card shadow-sm border-0 border-start border-danger border-4 mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 border-end">
+                        <h6 class="text-danger fw-bold text-uppercase border-bottom pb-2">8. Opportunity</h6>
+                        <p class="mb-1 small"><strong>Opp ID:</strong> {{ lead.opportunity_id }}</p>
+                        <h5 class="fw-bold text-success mb-2">Est. Value: PKR {{ lead.expected_value }}</h5>
+                        <p class="mb-1 small"><strong>Closing Date:</strong> {{ lead.closing_date|date:"M d, Y"|default:"-" }}</p>
+                        <p class="mb-1 small"><strong>Sales Stage:</strong> {{ lead.sales_stage|default:"-" }}</p>
+                        {% if lead.linked_quotation %}
+                        <p class="mb-1 small mt-2"><strong>Linked Quote:</strong> <a href="{% url 'print_quotation' lead.linked_quotation.id %}" target="_blank" class="badge bg-primary text-decoration-none">{{ lead.linked_quotation.quotation_number }}</a></p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-danger fw-bold text-uppercase border-bottom pb-2">6. Follow-Up Protocol</h6>
+                        <div class="alert {% if lead.next_follow_up %}alert-warning{% else %}alert-secondary{% endif %} p-2">
+                            <p class="mb-1 fw-bold"><i class="bi bi-calendar-check"></i> Next Due: {{ lead.next_follow_up|date:"M d, Y"|default:"Not Set" }}</p>
+                            <p class="mb-0 small">{{ lead.follow_up_remarks|default:"No instructions." }}</p>
+                        </div>
+                        <p class="mb-1 small"><strong>Assigned To (Sec 4):</strong> {{ lead.assigned_to.username|default:"Unassigned" }}</p>
+                        <p class="mb-1 small"><strong>Created By:</strong> {{ lead.created_by.username|default:"-" }}</p>
+                    </div>
+                </div>
+                
+                {% if lead.status == 'Lost' %}
+                <div class="alert alert-danger mt-3 mb-0">
+                    <h6 class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill"></i> Lead Lost Remarks:</h6>
+                    <p class="mb-0 small">{{ lead.lost_remarks }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Activity Log -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+                <span>5. Activity Log</span>
+                <button class="btn btn-sm btn-light py-0 fw-bold" data-bs-toggle="modal" data-bs-target="#addActivityModal">+ Add</button>
+            </div>
+            <div class="card-body p-0" style="max-height: 800px; overflow-y: auto;">
+                <ul class="list-group list-group-flush">
+                    {% for act in lead.activities.all|dictsortreversed:"date_time" %}
+                    <li class="list-group-item p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge 
+                                {% if act.activity_type == 'Call' %}bg-primary
+                                {% elif act.activity_type == 'Meeting' %}bg-danger
+                                {% elif act.activity_type == 'WhatsApp' %}bg-success
+                                {% else %}bg-secondary{% endif %}">{{ act.activity_type }}</span>
+                            <small class="text-muted fw-bold">{{ act.date_time|date:"M d, Y h:i A" }}</small>
+                        </div>
+                        <p class="mb-1 small">{{ act.remarks|linebreaksbr }}</p>
+                        <small class="text-muted fst-italic">- Logged by {{ act.added_by.username }}</small>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-center py-5 text-muted">No activities logged yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ACTIVITY MODAL -->
+<div class="modal fade" id="addActivityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="add_activity" value="1">
+                <div class="modal-header bg-dark text-white"><h5 class="modal-title">Log Activity</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="fw-bold">Activity Type</label>
+                        <select name="activity_type" class="form-select">
+                            <option value="Call">Call</option><option value="Meeting">Meeting</option>
+                            <option value="WhatsApp">WhatsApp</option><option value="Email">Email</option>
+                            <option value="Site Visit">Site Visit</option><option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-2"><label class="fw-bold">Date / Time</label><input type="datetime-local" name="date_time" class="form-control" required value="{% now 'Y-m-d\TH:i' %}"></div>
+                    <div class="mb-2"><label class="fw-bold">Discussion / Remarks *</label><textarea name="remarks" class="form-control" rows="4" required placeholder="What was discussed?"></textarea></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-dark fw-bold w-100">Save Activity</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT MASTER MODAL -->
+<div class="modal fade" id="editLeadModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="update_lead" value="1">
+                <div class="modal-header bg-warning text-dark"><h5 class="modal-title fw-bold">Master Lead Update</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body bg-light">
+                    <div class="row g-3">
+                        <!-- Left Col -->
+                        <div class="col-md-6 border-end pe-3">
+                            <h6 class="fw-bold text-primary">Core Details</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6"><label class="small fw-bold">Status</label>
+                                    <select name="status" id="status_sel" class="form-select form-select-sm border-dark">
+                                        <option value="New" {% if lead.status == 'New' %}selected{% endif %}>New</option>
+                                        <option value="Follow-Up" {% if lead.status == 'Follow-Up' %}selected{% endif %}>Follow-Up</option>
+                                        <option value="Converted" {% if lead.status == 'Converted' %}selected{% endif %}>Converted (Auto-Creates Client Profile)</option>
+                                        <option value="Lost" {% if lead.status == 'Lost' %}selected{% endif %}>Lost</option>
+                                    </select>
+                                </div>
+                                <div class="col-6"><label class="small fw-bold">Priority</label>
+                                    <select name="priority" class="form-select form-select-sm"><option value="High" {% if lead.priority == 'High' %}selected{% endif %}>ðŸ”¥ High</option><option value="Medium" {% if lead.priority == 'Medium' %}selected{% endif %}>Medium</option><option value="Low" {% if lead.priority == 'Low' %}selected{% endif %}>Low</option></select>
+                                </div>
+                                <div class="col-12 d-none" id="lost_remarks_div"><label class="small fw-bold text-danger">Why was this lost? *</label><textarea name="lost_remarks" class="form-control form-control-sm border-danger" rows="2">{{ lead.lost_remarks }}</textarea></div>
+                            </div>
+
+                            <h6 class="fw-bold text-primary mt-4">Customer Info</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6"><label class="small fw-bold">Contact Person</label><input type="text" name="client_name" class="form-control form-control-sm" value="{{ lead.client_name }}" required></div>
+                                <div class="col-6"><label class="small fw-bold">Company Name</label><input type="text" name="company_name" class="form-control form-control-sm" value="{{ lead.company_name }}"></div>
+                                <div class="col-6"><label class="small fw-bold">Mobile</label><input type="text" name="contact" class="form-control form-control-sm" value="{{ lead.contact }}" required></div>
+                                <div class="col-6"><label class="small fw-bold">Email</label><input type="email" name="email" class="form-control form-control-sm" value="{{ lead.email }}"></div>
+                                <div class="col-8"><label class="small fw-bold">Address</label><input type="text" name="address" class="form-control form-control-sm" value="{{ lead.address }}"></div>
+                                <div class="col-4"><label class="small fw-bold">City</label><input type="text" name="city" class="form-control form-control-sm" value="{{ lead.city }}"></div>
+                            </div>
+                        </div>
+
+                        <!-- Right Col -->
+                        <div class="col-md-6 ps-3">
+                            <h6 class="fw-bold text-success">Product & Qualification</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6"><label class="small fw-bold">Product Category</label><input type="text" name="product_category" class="form-control form-control-sm" value="{{ lead.product_category }}"></div>
+                                <div class="col-6"><label class="small fw-bold">Budget (PKR)</label><input type="number" step="any" name="budget" class="form-control form-control-sm" value="{{ lead.budget }}"></div>
+                                <div class="col-4"><label class="small fw-bold">Probability %</label><input type="number" name="probability" class="form-control form-control-sm" value="{{ lead.probability }}"></div>
+                                <div class="col-4"><label class="small fw-bold">Timeline</label><input type="text" name="timeline" class="form-control form-control-sm" value="{{ lead.timeline }}"></div>
+                                <div class="col-4"><label class="small fw-bold">Decision Maker</label><input type="text" name="decision_maker" class="form-control form-control-sm" value="{{ lead.decision_maker }}"></div>
+                            </div>
+
+                            <h6 class="fw-bold text-danger mt-4">Opportunity & Sales</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6"><label class="small fw-bold">Estimated Value (PKR)</label><input type="number" step="any" name="expected_value" class="form-control form-control-sm" value="{{ lead.expected_value }}"></div>
+                                <div class="col-6"><label class="small fw-bold">Sales Stage</label><input type="text" name="sales_stage" class="form-control form-control-sm" value="{{ lead.sales_stage }}"></div>
+                                <div class="col-6"><label class="small fw-bold">Closing Date</label><input type="date" name="closing_date" class="form-control form-control-sm" value="{{ lead.closing_date|date:'Y-m-d' }}"></div>
+                                <div class="col-6"><label class="small fw-bold">Link Quotation</label>
+                                    <select name="linked_quotation" class="form-select form-select-sm">
+                                        <option value="">-- No Quote --</option>
+                                        {% for q in quotations %}<option value="{{ q.id }}" {% if lead.linked_quotation_id == q.id %}selected{% endif %}>{{ q.quotation_number }} ({{ q.client.name }})</option>{% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <h6 class="fw-bold text-info mt-4">Follow Up</h6>
+                            <div class="row g-2">
+                                <div class="col-6"><label class="small fw-bold">Next Follow-Up</label><input type="date" name="next_follow_up" class="form-control form-control-sm" value="{{ lead.next_follow_up|date:'Y-m-d' }}"></div>
+                                <div class="col-6"><label class="small fw-bold">Assigned To</label>
+                                    <select name="assigned_to" class="form-select form-select-sm">
+                                        <option value="">-- None --</option>
+                                        {% for u in users %}<option value="{{ u.id }}" {% if lead.assigned_to_id == u.id %}selected{% endif %}>{{ u.username }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-12"><label class="small fw-bold">Follow Up Remarks</label><textarea name="follow_up_remarks" class="form-control form-control-sm" rows="1">{{ lead.follow_up_remarks }}</textarea></div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white"><button type="submit" class="btn btn-warning fw-bold w-100 fs-5"><i class="bi bi-save"></i> Save Massive Update</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const statSelect = document.getElementById('status_sel');
+        const lostDiv = document.getElementById('lost_remarks_div');
+        function checkLost() { if(statSelect.value === 'Lost') lostDiv.classList.remove('d-none'); else lostDiv.classList.add('d-none'); }
+        statSelect.addEventListener('change', checkLost); checkLost();
+    });
+</script>
+{% endblock %}

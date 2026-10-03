@@ -1,0 +1,99 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-calendar-check text-success"></i> Record Service Visit</h2>
+    <a href="{% url 'maintenance' %}" class="btn btn-secondary">Cancel</a>
+</div>
+<hr>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold text-primary">Client *</label>
+                    <select name="client_select" id="client_select" class="form-select" required>
+                        <option value="">-- Select Client --</option>
+                        {% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold text-info">Link Contract (Optional)</label>
+                    <select name="contract" id="contract_select" class="form-select">
+                        <option value="">-- Select Client First --</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold">Date of Visit *</label>
+                    <input type="date" name="service_date" class="form-control" value="{% now 'Y-m-d' %}" required>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold">Technician</label>
+                    <select name="technician" class="form-select">
+                        <option value="">-- None --</option>
+                        {% for t in technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold">Link Expense (Optional)</label>
+                    <select name="linked_expense" id="expense_select" class="form-select">
+                        <option value="">-- Select Client First --</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold">Link Invoice (Optional)</label>
+                    <select name="linked_invoice" id="invoice_select" class="form-select">
+                        <option value="">-- Select Client First --</option>
+                    </select>
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    <label class="fw-bold">Work Performed Details / Remarks</label>
+                    <textarea name="remarks" class="form-control" rows="3" placeholder="What was done during the visit?"></textarea>
+                </div>
+                
+                <div class="col-md-12 mb-3">
+                    <label class="fw-bold text-success">Upload Signed Document (Work Performed Slip)</label>
+                    <input type="file" name="work_performed_doc" class="form-control border-success border-2">
+                    <small class="text-muted">Upload the paper signed by the client here for future records.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-end mb-5">
+        <button type="submit" class="btn btn-success fw-bold px-5 fs-5"><i class="bi bi-save"></i> Save Visit Record</button>
+    </div>
+</form>
+
+<script>
+    $(document).ready(function() {
+        $('#client_select').select2({ placeholder: "-- Select Client --", width: '100%' });
+
+        $('#client_select').on('change', function() {
+            var c_id = $(this).val();
+            if(!c_id) return;
+
+            // Fetch Contracts
+            $.ajax({ url: "/ajax/get-client-contracts/", data: { 'client_id': c_id }, success: function(res) {
+                var sel = $('#contract_select'); sel.empty().append('<option value="">-- No Contract --</option>');
+                res.contracts.forEach(function(c) { sel.append(`<option value="${c.id}">${c.name}</option>`); });
+            }});
+
+            // Fetch Expenses
+            $.ajax({ url: "/ajax/get-client-expenses/", data: { 'client_id': c_id }, success: function(res) {
+                var sel = $('#expense_select'); sel.empty().append('<option value="">-- No Expense --</option>');
+                res.expenses.forEach(function(e) { sel.append(`<option value="${e.id}">${e.name}</option>`); });
+            }});
+
+            // Fetch All Invoices
+            $.ajax({ url: "/ajax/get-all-client-invoices/", data: { 'client_id': c_id }, success: function(res) {
+                var sel = $('#invoice_select'); sel.empty().append('<option value="">-- No Invoice --</option>');
+                res.invoices.forEach(function(inv) { sel.append(`<option value="${inv.id}">${inv.name}</option>`); });
+            }});
+        });
+    });
+</script>
+{% endblock %}

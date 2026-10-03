@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ doc.invoice_number|default:doc.quotation_number }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Force remove Browser Headers/Footers */
+        @page { size: A4; margin: 0; }
+        body { padding: 20mm; font-family: sans-serif; }
+        
+        @media print { 
+            .no-print { display: none !important; }
+            body { padding: 5mm; } /* Minimal padding for print */
+        }
+        
+        .small-text { font-size: 10px; }
+        .logo-img { max-height: 180px; max-width: 100%; } /* Larger Logo */
+        .tax-col { display: none; } /* Hidden by default */
+    </style>
+</head>
+<body>
+    <div class="text-end mb-4 no-print">
+        <button class="btn btn-primary fw-bold" onclick="window.print()">Print / Download PDF</button>
+    </div>
+
+    <!-- Header -->
+    <div class="row border-bottom border-dark border-2 pb-2 mb-3 align-items-end">
+        <div class="col-6">
+            {% if doc.company.logo %}
+                <img src="{{ doc.company.logo.url }}" class="logo-img">
+            {% endif %}
+            <p class="mb-0 text-muted small mt-2">{{ doc.company.address }}</p>
+            <p class="mb-0 text-muted small">Phone: {{ doc.company.contact_number }} | NTN: {{ doc.company.ntn }}</p>
+        </div>
+        <div class="col-6 text-end">
+            <h2 class="text-uppercase text-muted fw-bold mb-1">{{ doc_type }}</h2>
+            <!-- Invoice Number and Date same size -->
+            <h6 class="fw-bold mb-1"># {% if doc_type == 'Invoice' %}{{ doc.invoice_number }}{% else %}{{ doc.quotation_number }}{% endif %}</h6>
+            <h6 class="fw-bold">Date: {{ doc.date|date:"M d, Y" }}</h6>
+        </div>
+    </div>
+
+    <!-- Client -->
+    <div class="row mb-3">
+        <div class="col-6">
+            <h6 class="text-muted text-uppercase mb-1 small fw-bold">Bill To:</h6>
+            <h6 class="fw-bold text-dark mb-0">{{ doc.client.name }}</h6>
+            <div class="small">{{ doc.client.address }}</div>
+        </div>
+    </div>
+
+    <!-- Items -->
+    <table class="table table-bordered table-sm border-dark mb-3" id="mainTable">
+        <thead class="table-light border-dark">
+            <tr>
+                <th width="5%" class="text-center">#</th>
+                <th width="20%">Item Name</th>
+                <th width="40%">Description</th>
+                <th width="8%" class="text-center">Qty</th>
+                <th width="12%" class="text-end">Price</th>
+                <th width="8%" class="text-center tax-col">Tax</th>
+                <th width="15%" class="text-end">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in doc.items.all %}
+            <tr>
+                <td class="text-center align-middle small">{{ forloop.counter }}</td>
+                <td class="fw-bold small align-middle">
+                    {% if item.inventory_item %}{{ item.inventory_item.name }}{% else %}<span class="custom-name" data-text="{{ item.description }}"></span>{% endif %}
+                </td>
+                <td class="text-muted small align-middle" style="white-space: pre-line;">
+                    {% if item.inventory_item %}{{ item.inventory_item.description }}{% else %}<span class="custom-desc" data-text="{{ item.description }}"></span>{% endif %}
+                </td>
+                <td class="text-center align-middle small">{{ item.qty }}</td>
+                <td class="text-end align-middle small">{{ item.unit_price }}</td>
+                <td class="text-center align-middle small tax-col item-tax">{{ item.tax_percentage }}%</td>
+                <td class="text-end fw-bold small align-middle">{{ item.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="row mt-2">
+        <div class="col-7"><p class="small text-muted" style="white-space: pre-wrap;">{{ doc.terms_conditions }}</p></div>
+        <div class="col-5">
+            <table class="table table-sm table-borderless text-end small">
+                <tr><td>Sub Total:</td><td class="fw-bold">Rs {{ doc.grand_total|add:doc.discount|add:"-"|add:doc.total_tax_amount }}</td></tr>
+                <tr class="tax-col"><td>Tax:</td><td class="fw-bold text-info">+ Rs {{ doc.total_tax_amount }}</td></tr>
+                {% if doc.discount > 0 %}<tr><td class="text-danger">Discount:</td><td class="fw-bold text-danger">- Rs {{ doc.discount }}</td></tr>{% endif %}
+                <tr class="border-top border-dark border-2 fs-6"><th>Grand Total:</th><th>Rs {{ doc.grand_total }}</th></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="text-center mt-5 pt-3"><div class="p-2 border rounded bg-light d-inline-block small text-muted"><strong>This is a computer-generated {{ doc_type|lower }}.</strong></div></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let hasTax = false;
+            document.querySelectorAll('.item-tax').forEach(td => { if(parseFloat(td.innerText) > 0) hasTax = true; });
+            if(hasTax) { document.querySelectorAll('.tax-col').forEach(el => el.style.display = 'table-cell'); }
+            
+            document.querySelectorAll('.custom-name').forEach(s => s.innerText = s.getAttribute('data-text').split('\n')[0]);
+            document.querySelectorAll('.custom-desc').forEach(s => s.innerText = s.getAttribute('data-text').split('\n').slice(1).join('\n'));
+        });
+    </script>
+</body>
+</html>

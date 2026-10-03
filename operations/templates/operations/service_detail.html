@@ -1,0 +1,38 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-calendar-check text-primary"></i> Service Visit Details</h2>
+    <div>
+        <a href="{% url 'print_service' visit.id %}" target="_blank" class="btn btn-dark fw-bold me-2"><i class="bi bi-printer"></i> Print Visit</a>
+        <a href="{% url 'maintenance' %}" class="btn btn-secondary">Back</a>
+    </div>
+</div>
+<hr>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-primary text-white fw-bold">Visit Summary</div>
+            <div class="card-body">
+                <p><strong>Service Date:</strong> <span class="text-primary fw-bold">{{ visit.service_date|date:"M d, Y" }}</span></p>
+                <p><strong>Assigned Technician:</strong> {{ visit.technician.name|default:"Unassigned" }}</p>
+                <hr>
+                <h5 class="fw-bold text-dark">Visit Remarks / Work Done:</h5>
+                <p class="fs-5 text-muted bg-light p-3 rounded border" style="white-space: pre-line;">{{ visit.remarks|default:"No remarks logged." }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-dark text-white fw-bold">Client Information</div>
+            <div class="card-body">
+                <h5 class="fw-bold text-primary mb-1">{{ visit.client.name }}</h5>
+                <p class="text-muted mb-2"><i class="bi bi-building"></i> {{ visit.client.company_name|default:"No Company Name" }}</p>
+                <p class="mb-1"><i class="bi bi-telephone"></i> {{ visit.client.contact|default:"No Contact" }}</p>
+                <p class="mb-0 text-muted small"><i class="bi bi-geo-alt"></i> {{ visit.client.address|default:"No Address Provided" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

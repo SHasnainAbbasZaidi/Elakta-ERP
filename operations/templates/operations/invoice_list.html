@@ -1,0 +1,72 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-receipt text-primary"></i> Invoices Manager</h2>
+    {% if user.is_superuser or user.profile.role.permissions.invoices.add %}
+        <a href="{% url 'create_invoice' %}" class="btn btn-primary fw-bold"><i class="bi bi-plus-circle"></i> Create New Invoice</a>
+    {% endif %}
+</div>
+<hr><form method="get" class="d-flex flex-wrap gap-2 mb-3"><input class="form-control w-auto" name="q" value="{{ search_query }}" placeholder="Search number or client">{% include 'operations/date_filter.html' %}</form>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul"></i> Invoice History</span>
+        <!-- SEARCH BAR -->
+
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Date</th>
+                    <th>Invoice#</th>
+                    <th>Customer</th>
+                    <th>Company</th>
+                    <th>Grand Total</th><th>Profit / Margin</th>
+                    <th class="text-center">Payment Status</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in invoices %}
+                <tr>
+                    <td class="align-middle small">{{ row.invoice.date|date:"M d, Y" }}</td>
+                    <td class="align-middle fw-bold">
+                        <a href="{% url 'print_invoice' row.invoice.id %}" target="_blank" class="text-danger text-decoration-none">{{ row.invoice.invoice_number }}</a>
+                    </td>
+                    <td class="align-middle fw-bold">{{ row.invoice.client.name }}</td>
+                    <td class="align-middle text-muted">{{ row.invoice.company.name|default:"-" }}</td>
+                    <td class="align-middle fw-bold text-success">PKR {{ row.invoice.grand_total }}</td><td>{% if row.profit_data.complete %}{{ row.profit_data.profit|floatformat:2 }}<br><small>{% if row.profit_data.margin != None %}{{ row.profit_data.margin|floatformat:2 }}%{% else %}Margin N/A{% endif %}</small>{% else %}<span class="text-muted">Cost incomplete</span>{% endif %}</td>
+                    <td class="align-middle text-center">
+                        {% if row.payment_status == 'Paid' %}
+                            <span class="badge bg-success">Paid</span>
+                        {% elif row.payment_status == 'Partial' %}
+                            <span class="badge bg-warning text-dark">Partial Paid</span>
+                        {% elif row.payment_status == 'Overdue' %}
+                            <span class="badge bg-danger">Overdue (>30 Days)</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Due</span>
+                        {% endif %}
+                    </td>
+                    <td class="align-middle text-center">
+                        <div class="btn-group shadow-sm">
+                            <a href="{% url 'print_invoice' row.invoice.id %}" target="_blank" class="btn btn-sm btn-dark" title="Print"><i class="bi bi-printer"></i></a>
+                            
+                            {% if user.is_superuser or user.profile.role.permissions.invoices.edit %}
+                                <a href="{% url 'edit_invoice' row.invoice.id %}" class="btn btn-sm btn-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                            {% endif %}
+                            
+                            {% if user.is_superuser or user.profile.role.permissions.invoices.delete %}
+                                <a href="{% url 'delete_invoice' row.invoice.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this invoice?');" title="Delete"><i class="bi bi-trash"></i></a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-5">No invoices found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

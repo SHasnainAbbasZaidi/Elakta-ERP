@@ -1,0 +1,115 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-file-earmark-plus text-primary"></i> {% if edit_mode %}Edit{% else %}Create{% endif %} Service Contract</h2>
+    <a href="{% url 'maintenance' %}" class="btn btn-secondary">Cancel</a>
+</div>
+<hr>
+
+<form method="POST">
+    {% csrf_token %}
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold">Company Profile *</label>
+                    <select name="company" class="form-select">
+                        <option value="">-- Select --</option>
+                        {% for comp in companies %}
+                            <option value="{{ comp.id }}" {% if contract.company.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold text-primary">Client *</label>
+                    <select name="client_select" id="client_select" class="form-select" required>
+                        <option value="">-- Search or Create Client --</option>
+                        {% for c in clients %}
+                            <option value="{{ c.id }}" {% if contract.client.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold">Locations</label>
+                    <input type="text" name="locations" class="form-control" value="{{ contract.locations }}" placeholder="e.g. Head Office, Branch 1, Warehouse">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Start Date *</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ contract.start_date|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">End Date *</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ contract.end_date|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Visit Frequency *</label>
+                    <select name="visit_frequency_days" class="form-select" required>
+                        <option value="15" {% if contract.visit_frequency_days == '15' %}selected{% endif %}>Every 15 Days</option>
+                        <option value="30" {% if contract.visit_frequency_days == '30' %}selected{% endif %}>Every 30 Days</option>
+                        <option value="90" {% if contract.visit_frequency_days == '90' %}selected{% endif %}>Every 3 Months</option>
+                        <option value="180" {% if contract.visit_frequency_days == '180' %}selected{% endif %}>Every 6 Months</option>
+                        <option value="365" {% if contract.visit_frequency_days == '365' %}selected{% endif %}>Yearly</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold text-success">Total Contract Charges (PKR) *</label>
+                    <input type="number" step="any" name="charges" class="form-control fw-bold" value="{{ contract.charges }}" required>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JOBS SECTION -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-dark text-white fw-bold">Covered Equipment & Maintenance Jobs List</div>
+        <div class="card-body p-0">
+            <table class="table table-bordered mb-0">
+                <tbody id="jobs-table">
+                    {% if edit_mode %}
+                        {% for job in contract.jobs.all %}
+                        <tr>
+                            <td><input type="text" name="jobs[]" class="form-control" value="{{ job.description }}" required></td>
+                            <td class="text-center" style="width: 50px;"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td><input type="text" name="jobs[]" class="form-control" placeholder="e.g. Inspect & Clean 15x IP Cameras" required></td>
+                            <td class="text-center" style="width: 50px;"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="jobs[]" class="form-control" placeholder="e.g. Check Server Room UPS Backup"></td>
+                            <td class="text-center" style="width: 50px;"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white">
+            <button type="button" class="btn btn-sm btn-secondary fw-bold" onclick="addJobRow()"><i class="bi bi-plus-circle"></i> Add Job Row</button>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="fw-bold">Terms & Conditions</label>
+        <textarea name="terms_conditions" class="form-control" rows="4">{{ contract.terms_conditions|default:"1. Services will be provided as per schedule.\n2. Replacement of hardware parts is excluded unless specified.\n3. Payment must be cleared within 7 days of invoice." }}</textarea>
+    </div>
+
+    <div class="text-end mb-5">
+        <button type="submit" class="btn btn-success fw-bold px-5 fs-5"><i class="bi bi-save"></i> Save Contract</button>
+    </div>
+</form>
+
+<script>
+    $(document).ready(function() {
+        $('#client_select').select2({ tags: true, placeholder: "-- Search or Create Client --", width: '100%' });
+    });
+    function addJobRow() {
+        var row = `<tr>
+            <td><input type="text" name="jobs[]" class="form-control" placeholder="Type job description..."></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+        </tr>`;
+        $('#jobs-table').append(row);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,4 @@
+{% extends 'operations/base.html' %}
+{% block content %}<div class="d-flex justify-content-between mb-4"><h2>{% if edit_mode %}Edit{% else %}Create{% endif %} inventory item</h2><a class="btn btn-light border" href="{% url 'inventory_list' %}">Back</a></div>
+<div class="card p-4 erp-form"><form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Save inventory</button></form></div>
+<script>document.addEventListener('DOMContentLoaded',()=>{const source=document.getElementById('id_purchase_source');function toggle(){const local=source.value==='Direct';document.getElementById('id_vendor').closest('p').hidden=local;document.getElementById('id_vendor').disabled=local;document.getElementById('id_dp_shop_name').closest('p').hidden=!local;}source.addEventListener('change',toggle);toggle();});</script>{% endblock %}

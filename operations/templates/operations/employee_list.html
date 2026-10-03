@@ -1,0 +1,38 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-person-badge text-primary"></i> Employee Directory</h2>
+    <a href="{% url 'add_employee' %}" class="btn btn-primary fw-bold"><i class="bi bi-person-plus"></i> Register Employee</a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr><th>Emp ID</th><th>Photo</th><th>Name</th><th>Department</th><th>Designation</th><th>Location</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td class="fw-bold">{{ emp.employee_id }}</td>
+                    <td>
+                        {% if emp.image %}
+                            <img src="{{ emp.image.url }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 5px;">
+                        {% else %}
+                            <div class="bg-secondary text-white d-flex justify-content-center align-items-center rounded" style="width: 40px; height: 40px;"><i class="bi bi-person"></i></div>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ emp.name }}</strong><br><small class="text-muted">{{ emp.contact_number }}</small></td>
+                    <td>{{ emp.department }}</td>
+                    <td>{{ emp.designation }}</td>
+                    <td><span class="badge bg-info text-dark">{{ emp.location }}</span></td>
+                    <td>
+                        <a href="{% url 'employee_detail' emp.id %}" class="btn btn-sm btn-dark fw-bold"><i class="bi bi-eye"></i> Details & Card</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

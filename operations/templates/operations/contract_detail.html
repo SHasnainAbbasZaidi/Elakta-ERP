@@ -1,0 +1,99 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <a href="{% url 'maintenance' %}" class="btn btn-secondary btn-sm me-2"><i class="bi bi-arrow-left"></i></a>
+        <h2 class="d-inline"><i class="bi bi-file-text text-primary"></i> Contract: C-{{ contract.id }}</h2>
+    </div>
+    <div>
+        {% if user.is_superuser %}
+        <a href="{% url 'edit_contract' contract.id %}" class="btn btn-warning fw-bold text-dark me-2"><i class="bi bi-pencil"></i> Edit/Extend</a>
+        <a href="{% url 'delete_contract' contract.id %}" class="btn btn-danger fw-bold me-2" onclick="return confirm('Delete this entire contract?');"><i class="bi bi-trash"></i> Delete</a>
+        {% endif %}
+        <a href="{% url 'print_contract' contract.id %}" target="_blank" class="btn btn-primary fw-bold"><i class="bi bi-printer"></i> Print</a>
+    </div>
+</div>
+<hr>
+
+<div class="row mb-4 g-3">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-light h-100">
+            <div class="card-body">
+                <h6 class="text-muted fw-bold text-uppercase">Client & Location</h6>
+                <h5 class="fw-bold mb-1">{{ contract.client.name }}</h5>
+                <small class="text-muted">{{ contract.locations|default:"N/A" }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-light h-100">
+            <div class="card-body">
+                <h6 class="text-muted fw-bold text-uppercase">Contract Period</h6>
+                <h5 class="fw-bold mb-1">{{ contract.start_date|date:"M d, Y" }}</h5>
+                <small class="text-muted">To: {{ contract.end_date|date:"M d, Y" }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-light h-100">
+            <div class="card-body">
+                <h6 class="text-muted fw-bold text-uppercase">Charges & Inv.</h6>
+                <h5 class="fw-bold text-primary mb-1">C: PKR {{ contract.charges|floatformat:0 }}</h5>
+                <small class="text-muted">Inv: PKR {{ contract.total_invoiced|floatformat:0 }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 h-100 border-start border-4 {% if contract.profit_loss >= 0 %}border-success{% else %}border-danger{% endif %}">
+            <div class="card-body">
+                <h6 class="text-muted fw-bold text-uppercase">Profit / Loss (P/L)</h6>
+                <h4 class="fw-bold mb-1 {% if contract.profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">PKR {{ contract.profit_loss|floatformat:0 }}</h4>
+                <small class="text-muted">Total Expenses: PKR {{ contract.total_expenses|floatformat:0 }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- JOBS -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-dark text-white fw-bold"><i class="bi bi-list-check"></i> Covered Jobs</div>
+            <ul class="list-group list-group-flush">
+                {% for j in contract.jobs.all %}
+                <li class="list-group-item"><i class="bi bi-check2 text-success me-2"></i> {{ j.description }}</li>
+                {% empty %}
+                <li class="list-group-item text-muted">No jobs specified.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- VISIT HISTORY -->
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white fw-bold"><i class="bi bi-clock-history"></i> Service Visits History</div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Date</th><th>Technician</th><th>Expense</th><th>Signed Doc</th><th>Remarks</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for v in visits %}
+                        <tr>
+                            <td class="fw-bold">{{ v.service_date|date:"M d, Y" }}</td>
+                            <td>{{ v.technician.name|default:"-" }}</td>
+                            <td>{% if v.linked_expense %}<span class="text-danger fw-bold">PKR {{ v.linked_expense.amount|floatformat:0 }}</span>{% else %}-{% endif %}</td>
+                            <td>{% if v.work_performed_doc %}<a href="{{ v.work_performed_doc.url }}" target="_blank" class="badge bg-success text-decoration-none">View Doc</a>{% else %}<span class="badge bg-secondary">No Doc</span>{% endif %}</td>
+                            <td class="small text-muted">{{ v.remarks|truncatechars:35 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center py-4 text-muted">No service visits recorded yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,239 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-truck text-primary"></i> Create / Edit Delivery Challan</h2>
+    <a href="{% url 'dc_list' %}" class="btn btn-secondary">Cancel</a>
+</div>
+<hr>
+
+{% if not edit_mode %}
+<div class="card shadow-sm border-info mb-4 bg-light">
+    <div class="card-body py-2 px-3 d-flex align-items-center">
+        <label class="fw-bold text-info me-3 mb-0"><i class="bi bi-lightning-charge"></i> Load items from Quotation:</label>
+        <select id="quote_template_loader" class="form-select form-select-sm w-50 me-3">
+            <option value="">-- Search Quotation by #, Client, or Company --</option>
+            {% for q in past_quotations %}
+                <option value="{{ q.id }}">{{ q.quotation_number }} ({{ q.client.company_name|default:q.client.name }})</option>
+            {% endfor %}
+        </select>
+        <button type="button" class="btn btn-sm btn-info fw-bold" onclick="loadQuoteTemplateDC()"><i class="bi bi-cloud-download"></i> Load Items</button>
+    </div>
+</div>
+{% endif %}
+
+<form method="POST">
+    {% csrf_token %}
+{% if form.errors %}<div class="alert alert-danger" role="alert">{{ form.errors }}</div>{% endif %}
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold">Company Profile *</label>
+                    {{ form.company }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold text-primary">Customer Name *</label>
+                    <select name="client_select" id="client_select" class="form-select" required>
+                        <option value="">-- Search or Create Customer --</option>
+                        {% for c in clients %}
+                            <option value="{{ c.id }}" data-address="{{ c.address }}" data-contact="{{ c.contact }}" data-company="{{ c.company_name }}" {% if selected_client and selected_client.id == c.id %}selected{% endif %}>{{ c.name }} {% if c.company_name %}({{ c.company_name }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <div id="new_client_fields" class="mt-2 p-3 bg-white border border-primary rounded d-none shadow-sm">
+                        <span class="badge bg-primary mb-2">New Customer! Add details (Optional)</span>
+                        <input type="text" name="new_client_company" class="form-control form-control-sm mb-2" placeholder="Company Name">
+                        <input type="text" name="new_client_contact" class="form-control form-control-sm mb-2" placeholder="Contact Number">
+                        <input type="text" name="new_client_address" class="form-control form-control-sm" placeholder="Address">
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="fw-bold">Date *</label>
+                    {{ form.date }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Delivered By</label>
+                    {{ form.delivered_by }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Site / Project Name</label>
+                    {{ form.site_project }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ITEMS TABLE -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-dark text-white fw-bold">Delivery Items List</div>
+        <div class="card-body p-0">
+            <table class="table table-bordered mb-0 align-middle">
+                <thead class="table-secondary text-center">
+                    <tr>
+                        <th style="width: 12%;">Source</th>
+                        <th style="width: 15%;">Category</th>
+                        <th style="width: 20%;">Item Name</th>
+                        <th style="width: 33%;">Description</th>
+                        <th style="width: 10%;">Qty</th>
+                        <th style="width: 10%;">#</th>
+                    </tr>
+                </thead>
+                <tbody id="items-table-body">
+                    {% if edit_items %}
+                        {% for item in edit_items %}
+                        <tr>
+                            <td class="text-center align-middle">
+                                <select name="source[]" class="form-select text-center item-source">
+                                    <option value="Direct" {% if item.source == 'Direct' %}selected{% endif %}>Direct Purchase</option>
+                                    <option value="Inventory" {% if item.source == 'Inventory' %}selected{% endif %}>Inventory</option>
+                                </select>
+                            </td>
+                            <td class="text-start align-middle">
+                                <select class="form-select category-select">
+                                    <option value="">-- Cat --</option>
+                                    {% for cat in categories %}<option value="{{ cat }}" {% if item.inventory_item and item.inventory_item.category == cat %}selected{% endif %}>{{ cat }}</option>{% endfor %}
+                                </select>
+                            </td>
+                            <td class="text-start align-middle">
+                                <input type="hidden" name="inventory_item_id[]" class="inv-item-id" value="{% if item.inventory_item %}{{ item.inventory_item.id }}{% endif %}">
+                                <input type="text" name="item_name[]" class="form-control item-name-input" value="{% if item.custom_item_name %}{{ item.custom_item_name }}{% elif item.inventory_item %}{{ item.inventory_item.name }}{% endif %}" required>
+                            </td>
+                            <td class="text-start align-middle"><input type="text" name="description[]" class="form-control item-desc" value="{{ item.custom_item_description }}"></td>
+                            <td class="text-center align-middle"><input type="number" step="any" name="qty[]" class="form-control text-center" value="{{ item.qty }}" required></td>
+                            <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        {% for i in "1234567890" %}
+                        <tr>
+                            <td class="text-center align-middle">
+                                <select name="source[]" class="form-select text-center item-source">
+                                    <option value="Direct">Direct Purchase</option>
+                                    <option value="Inventory">Inventory</option>
+                                </select>
+                            </td>
+                            <td class="text-start align-middle">
+                                <select class="form-select category-select">
+                                    <option value="">-- Cat --</option>
+                                    {% for cat in categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}
+                                </select>
+                            </td>
+                            <td class="text-start align-middle">
+                                <input type="hidden" name="inventory_item_id[]" class="inv-item-id">
+                                <input type="text" name="item_name[]" class="form-control item-name-input" placeholder="Type item name..." required>
+                            </td>
+                            <td class="text-start align-middle"><input type="text" name="description[]" class="form-control item-desc" placeholder="Description..."></td>
+                            <td class="text-center align-middle"><input type="number" step="any" name="qty[]" class="form-control text-center" value="1"></td>
+                            <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white text-end">
+            <button type="button" class="btn btn-sm btn-secondary fw-bold" onclick="addDCRow()"><i class="bi bi-plus-circle"></i> Add Row</button>
+        </div>
+    </div>
+
+    <div class="text-end mt-4">
+        <button type="submit" class="btn btn-success fw-bold px-5 fs-5"><i class="bi bi-save"></i> Save Delivery Challan</button>
+    </div>
+</form>
+
+<script>
+    $(document).ready(function() {
+        $('#client_select').select2({ tags: true, placeholder: "-- Search or Create Customer --", width: '100%' });
+        $('#quote_template_loader').select2({ width: '100%' });
+        $('.category-select').select2({ tags: true, placeholder: "-- Cat --", width: '100%' });
+
+        $('#client_select').on('change', function() {
+            var selected = $(this).find(':selected');
+            if (selected.attr('data-address') === undefined && $(this).val() !== "") {
+                $('#new_client_fields').removeClass('d-none');
+            } else {
+                $('#new_client_fields').addClass('d-none');
+            }
+        });
+    });
+
+    $(document).on('change', '.category-select', function() {
+        var cat = $(this).val();
+        var row = $(this).closest('tr');
+        var nameInput = row.find('.item-name-input');
+        
+        if (cat) {
+            $.ajax({
+                url: "/ajax/get-inventory-by-category/",
+                data: { 'category': cat },
+                success: function(res) {
+                    if(res.items.length > 0) {
+                        var selectHtml = `<select name="item_name[]" class="form-select item-name-select" required><option value="">-- Select Item --</option>`;
+                        res.items.forEach(function(item) {
+                            var display = item.name + (item.description ? " | " + item.description.substring(0, 30) : "");
+                            selectHtml += `<option value="${item.name}" data-desc="${item.description}" data-id="${item.id}">${display}</option>`;
+                        });
+                        selectHtml += `</select>`;
+                        nameInput.replaceWith(selectHtml);
+                        row.find('.item-name-select').select2({ tags: true, width: '100%' });
+                    }
+                }
+            });
+        }
+    });
+
+    $(document).on('change', '.item-name-select', function() {
+        var selected = $(this).find(':selected');
+        var row = $(this).closest('tr');
+        if (selected.val() && selected.attr('data-id')) {
+            row.find('.inv-item-id').val(selected.attr('data-id'));
+            row.find('.item-desc').val(selected.attr('data-desc'));
+        } else {
+            row.find('.inv-item-id').val('');
+        }
+    });
+
+    function loadQuoteTemplateDC() {
+        var q_id = $('#quote_template_loader').val();
+        if(!q_id) return;
+        $.ajax({
+            url: "/ajax/get-quotation-items/" + q_id + "/",
+            type: "GET",
+            success: function(res) {
+                $('#items-table-body').empty();
+                res.items.forEach(function(item) {
+                    var isInv = item.inventory_item_id ? 'selected' : '';
+                    var isDir = !item.inventory_item_id ? 'selected' : '';
+                    var sourceHtml = `<select name="source[]" class="form-select text-center item-source"><option value="Direct" ${isDir}>Direct Purchase</option><option value="Inventory" ${isInv}>Inventory</option></select>`;
+                    
+                    var row = $(`<tr>
+                        <td class="text-center align-middle">${sourceHtml}</td>
+                        <td class="text-start align-middle"><select class="form-select category-select"><option value="">-- Cat --</option>{% for cat in categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}</select></td>
+                        <td class="text-start align-middle">
+                            <input type="hidden" name="inventory_item_id[]" class="inv-item-id" value="${item.inventory_item_id || ''}">
+                            <input type="text" name="item_name[]" class="form-control item-name-input" value="${item.item_name}" required>
+                        </td>
+                        <td class="text-start align-middle"><input type="text" name="description[]" class="form-control item-desc" value="${item.description}"></td>
+                        <td class="text-center align-middle"><input type="number" step="any" name="qty[]" class="form-control text-center" value="${item.qty}" required></td>
+                        <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+                    </tr>`);
+                    $('#items-table-body').append(row);
+                    row.find('.category-select').select2({ tags: true, placeholder: "-- Cat --", width: '100%' });
+                });
+            }
+        });
+    }
+
+    function addDCRow() {
+        var row = $(`<tr>
+            <td class="text-center align-middle"><select name="source[]" class="form-select text-center item-source"><option value="Direct">Direct Purchase</option><option value="Inventory">Inventory</option></select></td>
+            <td class="text-start align-middle"><select class="form-select category-select"><option value="">-- Cat --</option>{% for cat in categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}</select></td>
+            <td class="text-start align-middle"><input type="hidden" name="inventory_item_id[]" class="inv-item-id"><input type="text" name="item_name[]" class="form-control item-name-input" placeholder="Type item name..." required></td>
+            <td class="text-start align-middle"><input type="text" name="description[]" class="form-control item-desc" placeholder="Description..."></td>
+            <td class="text-center align-middle"><input type="number" step="any" name="qty[]" class="form-control text-center" value="1" required></td>
+            <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+        </tr>`);
+        $('#items-table-body').append(row);
+        row.find('.category-select').select2({ tags: true, placeholder: "-- Cat --", width: '100%' });
+    }
+</script>
+{% endblock %}

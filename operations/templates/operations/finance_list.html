@@ -1,0 +1,124 @@
+{% extends 'operations/base.html' %}
+{% block content %}<a class="btn btn-primary mb-3" href="{% url 'ledger_index' %}">Client & vendor ledgers</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-wallet2 text-primary"></i> Finance & Transactions Manager</h2>
+    {% if user.is_superuser %}
+        <a href="{% url 'add_finance' %}" class="btn btn-primary fw-bold"><i class="bi bi-plus-circle"></i> Add Transaction</a>
+    {% endif %}
+</div>
+<hr>
+
+<!-- FINANCE SUMMARY CARDS -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase fw-bold small">Invoice Payments</h6>
+                <h4 class="fw-bold text-primary mb-0"><span class="format-num">{{ inv_tot|default:"0" }}</span></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase fw-bold small">Cash Bills</h6>
+                <h4 class="fw-bold text-success mb-0"><span class="format-num">{{ cash_tot|default:"0" }}</span></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase fw-bold small">Expenses</h6>
+                <h4 class="fw-bold text-danger mb-0"><span class="format-num">{{ exp_tot|default:"0" }}</span></h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase fw-bold small">Inventory Invoices</h6>
+                <h4 class="fw-bold text-dark mb-0"><span class="format-num">{{ inv_price_tot|default:"0" }}</span></h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DUE & OVERDUE INVOICES SUMMARY CARDS -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-warning bg-light">
+            <div class="card-body">
+                <h5 class="fw-bold text-warning text-dark"><i class="bi bi-clock-history"></i> Total Due Invoices Amount</h5>
+                <h3 class="fw-bold text-dark mb-0"><span class="format-num">{{ due_invoices_total|default:"0" }}</span></h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-danger bg-light">
+            <div class="card-body">
+                <h5 class="fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Total Overdue Invoices Amount (>30 Days)</h5>
+                <h3 class="fw-bold text-danger mb-0"><span class="format-num">{{ overdue_invoices_total|default:"0" }}</span></h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TRANSACTION HISTORY -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-dark text-white fw-bold"><i class="bi bi-list-ul"></i> Transaction History</div>
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped mb-0">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Client / Vendor</th>
+                    <th>Linked Invoice</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    {% if user.is_superuser %}<th class="text-center">Actions</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bills %}
+                <tr>
+                    <td class="align-middle small">{{ b.date|date:"M d, Y" }}</td>
+                    <td class="align-middle fw-bold">
+                        {% if b.category == 'Other' and b.custom_category %}{{ b.custom_category }}
+                        {% elif b.category == 'Inventory Price' %}Invoice (Inventory)
+                        {% else %}{{ b.category }}{% endif %}
+                    </td>
+                    <td class="align-middle">{{ b.client.name|default:b.vendor|default:"Internal" }}</td>
+                    <td class="align-middle">{% if b.linked_invoice %}{{ b.linked_invoice.invoice_number }}{% else %}-{% endif %}</td>
+                    <td class="align-middle fw-bold text-success"><span class="format-num">{{ b.amount|default:"0" }}</span></td>
+                    <td class="align-middle"><span class="badge bg-secondary">{{ b.payment_status|default:"Paid" }}</span></td>
+                    {% if user.is_superuser %}
+                    <td class="align-middle text-center">
+                        <div class="btn-group shadow-sm">
+                            <a href="{% url 'edit_finance' b.id %}" class="btn btn-sm btn-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                            <a href="{% url 'delete_finance' b.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this record?');" title="Delete"><i class="bi bi-trash"></i></a>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-5">No finance records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- JavaScript Number Formatter (Same bulletproof script used in print_invoice) -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.format-num').forEach(function(el) {
+            var val = parseFloat(el.innerText);
+            if (!isNaN(val)) {
+                el.innerText = Math.round(val).toLocaleString('en-US');
+            }
+        });
+    });
+</script>
+{% endblock %}

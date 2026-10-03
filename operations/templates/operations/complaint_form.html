@@ -1,0 +1,215 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-exclamation-triangle text-danger"></i> Complaints Manager</h2>
+    <div class="bg-dark text-white px-3 py-2 rounded shadow-sm fw-bold">
+        Next Available Complaint #: <span class="text-warning fs-5">{{ next_comp_num }}</span>
+    </div>
+</div>
+<hr>
+
+{% if user.is_superuser or user.profile.role.permissions.complaints.add %}
+<div class="card shadow-sm mb-4 border-0">
+    <div class="card-header bg-primary text-white fw-bold">Log New Complaint</div>
+    <div class="card-body bg-light">
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="save_complaint" value="1">
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold text-primary">Client Name (Search or Type New) *</label>
+                    <select name="client_select" id="client_select" class="form-select" required>
+                        <option value="">-- Type to Search or Create --</option>
+                        {% for c in clients %}
+                            <option value="{{ c.id }}" data-address="{{ c.address }}" data-contact="{{ c.contact }}" data-company="{{ c.company_name }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <div id="client_details_box" class="mt-2 p-2 bg-white border rounded d-none small text-muted shadow-sm"></div>
+                    
+                    <div id="new_client_fields" class="mt-2 p-3 bg-white border border-primary rounded d-none shadow-sm">
+                        <span class="badge bg-primary mb-2">New Client Detected! Add details (Optional)</span>
+                        <input type="text" name="new_client_company" class="form-control form-control-sm mb-2" placeholder="Company Name">
+                        <input type="text" name="new_client_contact" class="form-control form-control-sm mb-2" placeholder="Contact Number">
+                        <input type="text" name="new_client_address" class="form-control form-control-sm" placeholder="Address">
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Assign Technicians (Search or Type New) *</label>
+                    <select name="technicians[]" id="tech_select" class="form-select" multiple="multiple" required>
+                        {% for t in technicians %}
+                            <option value="{{ t.id }}">{{ t.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted d-block mt-1">You can select multiple technicians or type a new name and press enter.</small>
+                </div>
+                
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Company Profile</label>
+                    <select name="company" class="form-select">
+                        <option value="">-- Select --</option>
+                        {% for comp in companies %}<option value="{{ comp.id }}">{{ comp.name }}</option>{% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Initial Status</label>
+                    <select name="status" class="form-select fw-bold text-dark">
+                        <option value="Open">Open</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold text-danger">Issue Description *</label>
+                    <textarea name="issue_description" class="form-control" rows="2" required placeholder="Describe the problem..."></textarea>
+                </div>
+            </div>
+            
+            <div class="text-end">
+                <button type="submit" class="btn btn-success fw-bold px-4"><i class="bi bi-save"></i> Save Complaint</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul"></i> Complaint History</span>
+        <!-- SEARCH BAR -->
+        <form method="GET" class="d-flex" style="max-width: 350px;">
+            <input type="text" name="q" class="form-control form-control-sm me-2" placeholder="Search client, #, tech, issue..." value="{{ search_query }}">
+            <button type="submit" class="btn btn-sm btn-primary">Search</button>
+            {% if search_query %}<a href="{% url 'complaints' %}" class="btn btn-sm btn-secondary ms-1">Clear</a>{% endif %}
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0 text-sm">
+                <thead class="table-secondary">
+                    <tr>
+                        <th width="10%">Date</th>
+                        <th width="12%">Complaint#</th>
+                        <th width="15%">Client</th>
+                        <th width="20%">Issue</th>
+                        <th width="15%">Technician(s)</th>
+                        <th width="8%" class="text-center">Status</th>
+                        <th width="10%">Close Time</th>
+                        <th width="10%" class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in complaints %}
+                    <tr>
+                        <td class="align-middle small">{{ c.date_time|date:"M d, Y" }}</td>
+                        <!-- CLICKABLE LINK TO DETAILS -->
+                        <td class="align-middle fw-bold"><a href="{% url 'complaint_detail' c.id %}" class="text-danger text-decoration-none">{{ c.complaint_number }}</a></td>
+                        <td class="align-middle fw-bold">{{ c.client.name }}</td>
+                        <td class="align-middle small text-muted">{{ c.issue_description|truncatechars:40 }}</td>
+                        <td class="align-middle text-primary fw-bold small">
+                            {% for t in c.technicians.all %}
+                                {{ t.name }}{% if not forloop.last %}, {% endif %}
+                            {% empty %}
+                                Unassigned
+                            {% endfor %}
+                        </td>
+                        <td class="align-middle text-center">
+                            {% if c.status == 'Open' %}<span class="badge bg-danger">Open</span>
+                            {% elif c.status == 'Pending' %}<span class="badge bg-warning text-dark">Pending</span>
+                            {% else %}<span class="badge bg-success">Closed</span>{% endif %}
+                        </td>
+                        <td class="align-middle small">
+                            {% if c.closed_at %}{{ c.closed_at|date:"M d, H:i" }}{% else %}-{% endif %}
+                        </td>
+                        <td class="align-middle text-center">
+                            <div class="btn-group shadow-sm">
+                                <a href="{% url 'print_complaint' c.id %}" target="_blank" class="btn btn-sm btn-dark" title="Print"><i class="bi bi-printer"></i></a>
+                                
+                                {% if user.is_superuser or user.profile.role.permissions.complaints.edit %}
+                                    <button class="btn btn-sm btn-primary" onclick="openUpdateModal('{{ c.id }}', '{{ c.status }}')" title="Update Status"><i class="bi bi-pencil"></i></button>
+                                {% endif %}
+                                
+                                {% if user.is_superuser %}
+                                    <a href="{% url 'delete_complaint' c.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this complaint?');" title="Delete"><i class="bi bi-trash"></i></a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-3"></i> No complaints found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="updateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="update_status" value="1">
+                <input type="hidden" name="complaint_id" id="modal_complaint_id">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold">Update Complaint Status</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="fw-bold">New Status</label>
+                        <select name="new_status" id="modal_status" class="form-select">
+                            <option value="Open">Open</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Closed">Closed</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold">Remarks (Optional)</label>
+                        <textarea name="remark_text" class="form-control" rows="3" placeholder="Add tracking remarks..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success fw-bold w-100">Save Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#client_select').select2({ tags: true, placeholder: "-- Type to Search or Create --", width: '100%' });
+        $('#tech_select').select2({ tags: true, multiple: true, placeholder: "Select or type names...", width: '100%' });
+
+        $('#client_select').on('change', function() {
+            var selected = $(this).find(':selected');
+            var isNew = selected.attr('data-address') === undefined && $(this).val() !== "";
+            
+            if (isNew) {
+                $('#client_details_box').addClass('d-none');
+                $('#new_client_fields').removeClass('d-none');
+            } else if ($(this).val() !== "") {
+                var addr = selected.data('address') || 'No Address provided';
+                var contact = selected.data('contact') || 'No Contact provided';
+                var comp = selected.data('company') || 'No Company Name';
+                $('#new_client_fields').addClass('d-none');
+                $('#client_details_box').html('<strong>Company:</strong> ' + comp + '<br><strong>Address:</strong> ' + addr + '<br><strong>Contact:</strong> ' + contact).removeClass('d-none');
+            } else {
+                $('#new_client_fields').addClass('d-none');
+                $('#client_details_box').addClass('d-none');
+            }
+        });
+    });
+    function openUpdateModal(id, current_status) {
+        document.getElementById('modal_complaint_id').value = id;
+        document.getElementById('modal_status').value = current_status;
+        var modal = new bootstrap.Modal(document.getElementById('updateModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

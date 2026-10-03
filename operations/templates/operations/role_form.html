@@ -1,0 +1,168 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-shield-check"></i> {{ title }}</h2>
+    <a href="{% url 'role_list' %}" class="btn btn-secondary">Cancel</a>
+</div>
+<hr>
+
+<form method="POST">
+    {% csrf_token %}
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="mb-4 w-50">
+                <label class="fw-bold fs-5 text-primary">Role Name</label>
+                <input type="text" name="name" class="form-control" value="{{ role.name }}" required>
+            <fieldset class="mt-3"><legend class="fs-6">CRM access</legend>
+<label class="me-3"><input type="checkbox" name="p_crm_view" {% if role.permissions.crm.view %}checked{% endif %}> View</label>
+<label class="me-3"><input type="checkbox" name="p_crm_add" {% if role.permissions.crm.add %}checked{% endif %}> Add</label>
+<label><input type="checkbox" name="p_crm_edit" {% if role.permissions.crm.edit %}checked{% endif %}> Edit</label>
+</fieldset></div>
+            
+            <h5 class="fw-bold border-bottom pb-2 mb-3">Module Permissions & Sidebar Access</h5>
+            
+            <div class="row">
+                <!-- Dashboard Control -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold">
+                            <input type="checkbox" name="p_dash_view" id="dash_view" class="form-check-input me-2" onchange="toggleSubs('dash_subs', this)" {% if role.permissions.dashboard.view %}checked{% endif %}> Dashboard
+                        </div>
+                        <div class="card-body py-2 d-none" id="dash_subs">
+                            <label class="d-block"><input type="checkbox" name="p_dash_comp" class="form-check-input" {% if role.permissions.dashboard.complaints %}checked{% endif %}> Show Open Complaints Card</label>
+                            <label class="d-block"><input type="checkbox" name="p_dash_tasks" class="form-check-input" {% if role.permissions.dashboard.tasks %}checked{% endif %}> Show Open Tasks Card</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Complaints -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold">
+                            <input type="checkbox" name="p_comp_view" id="comp_view" class="form-check-input me-2" onchange="toggleSubs('comp_subs', this)" {% if role.permissions.complaints.view %}checked{% endif %}> Complaints Module
+                        </div>
+                        <div class="card-body py-2 d-none" id="comp_subs">
+                            <label class="d-block"><input type="checkbox" name="p_comp_add" class="form-check-input text-success" {% if role.permissions.complaints.add %}checked{% endif %}> Can Add</label>
+                            <label class="d-block"><input type="checkbox" name="p_comp_edit" class="form-check-input text-warning" {% if role.permissions.complaints.edit %}checked{% endif %}> Can Edit</label>
+                            <label class="d-block"><input type="checkbox" name="p_comp_del" class="form-check-input text-danger" {% if role.permissions.complaints.delete %}checked{% endif %}> Can Delete</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tasks -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold">
+                            <input type="checkbox" name="p_task_view" id="task_view" class="form-check-input me-2" onchange="toggleSubs('task_subs', this)" {% if role.permissions.tasks.view %}checked{% endif %}> Tasks Module
+                        </div>
+                        <div class="card-body py-2 d-none" id="task_subs">
+                            <label class="d-block"><input type="checkbox" name="p_task_all" class="form-check-input text-info" {% if role.permissions.tasks.view_all %}checked{% endif %}> View EVERYONE'S Tasks</label>
+                            <hr class="my-1">
+                            <label class="d-block"><input type="checkbox" name="p_task_add" class="form-check-input text-success" {% if role.permissions.tasks.add %}checked{% endif %}> Can Add</label>
+                            <label class="d-block"><input type="checkbox" name="p_task_edit" class="form-check-input text-warning" {% if role.permissions.tasks.edit %}checked{% endif %}> Can Edit</label>
+                            <label class="d-block"><input type="checkbox" name="p_task_del" class="form-check-input text-danger" {% if role.permissions.tasks.delete %}checked{% endif %}> Can Delete</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoices -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold"><input type="checkbox" name="p_inv_view" id="inv_view" class="form-check-input me-2" onchange="toggleSubs('inv_subs', this)" {% if role.permissions.invoices.view %}checked{% endif %}> Invoices Module</div>
+                        <div class="card-body py-2 d-none" id="inv_subs">
+                            <label class="d-block"><input type="checkbox" name="p_inv_add" class="form-check-input text-success" {% if role.permissions.invoices.add %}checked{% endif %}> Can Create</label>
+                            <label class="d-block"><input type="checkbox" name="p_inv_edit" class="form-check-input text-warning" {% if role.permissions.invoices.edit %}checked{% endif %}> Can Edit</label>
+                            <label class="d-block"><input type="checkbox" name="p_inv_del" class="form-check-input text-danger" {% if role.permissions.invoices.delete %}checked{% endif %}> Can Delete</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quotations -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold"><input type="checkbox" name="p_quo_view" id="quo_view" class="form-check-input me-2" onchange="toggleSubs('quo_subs', this)" {% if role.permissions.quotations.view %}checked{% endif %}> Quotations Module</div>
+                        <div class="card-body py-2 d-none" id="quo_subs">
+                            <label class="d-block"><input type="checkbox" name="p_quo_add" class="form-check-input text-success" {% if role.permissions.quotations.add %}checked{% endif %}> Can Create</label>
+                            <label class="d-block"><input type="checkbox" name="p_quo_edit" class="form-check-input text-warning" {% if role.permissions.quotations.edit %}checked{% endif %}> Can Edit</label>
+                            <label class="d-block"><input type="checkbox" name="p_quo_del" class="form-check-input text-danger" {% if role.permissions.quotations.delete %}checked{% endif %}> Can Delete</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delivery Challan -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold"><input type="checkbox" name="p_dc_view" id="dc_view" class="form-check-input me-2" onchange="toggleSubs('dc_subs', this)" {% if role.permissions.dc.view %}checked{% endif %}> Delivery Challan (DC)</div>
+                        <div class="card-body py-2 d-none" id="dc_subs">
+                            <label class="d-block"><input type="checkbox" name="p_dc_add" class="form-check-input text-success" {% if role.permissions.dc.add %}checked{% endif %}> Can Create</label>
+                            <label class="d-block"><input type="checkbox" name="p_dc_edit" class="form-check-input text-warning" {% if role.permissions.dc.edit %}checked{% endif %}> Can Edit</label>
+                            <label class="d-block"><input type="checkbox" name="p_dc_del" class="form-check-input text-danger" {% if role.permissions.dc.delete %}checked{% endif %}> Can Delete</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventory -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold"><input type="checkbox" name="p_invt_view" id="invt_view" class="form-check-input me-2" onchange="toggleSubs('invt_subs', this)" {% if role.permissions.inventory.view %}checked{% endif %}> Inventory Module</div>
+                        <div class="card-body py-2 d-none" id="invt_subs">
+                            <label class="d-block"><input type="checkbox" name="p_invt_add" class="form-check-input text-success" {% if role.permissions.inventory.add %}checked{% endif %}> Can Add Stock</label>
+                            <label class="d-block"><input type="checkbox" name="p_invt_edit" class="form-check-input text-warning" {% if role.permissions.inventory.edit %}checked{% endif %}> Can Edit Adjustments</label>
+                            <label class="d-block"><input type="checkbox" name="p_invt_del" class="form-check-input text-danger" {% if role.permissions.inventory.delete %}checked{% endif %}> Can Delete Stock</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Maintenance -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold"><input type="checkbox" name="p_maint_view" id="maint_view" class="form-check-input me-2" onchange="toggleSubs('maint_subs', this)" {% if role.permissions.maintenance.view %}checked{% endif %}> Maintenance Module</div>
+                        <div class="card-body py-2 d-none" id="maint_subs">
+                            <label class="d-block"><input type="checkbox" name="p_maint_add" class="form-check-input text-success" {% if role.permissions.maintenance.add %}checked{% endif %}> Can Add</label>
+                            <label class="d-block"><input type="checkbox" name="p_maint_edit" class="form-check-input text-warning" {% if role.permissions.maintenance.edit %}checked{% endif %}> Can Edit</label>
+                            <label class="d-block"><input type="checkbox" name="p_maint_del" class="form-check-input text-danger" {% if role.permissions.maintenance.delete %}checked{% endif %}> Can Delete</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Finance -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold"><input type="checkbox" name="p_fin_view" id="fin_view" class="form-check-input me-2" onchange="toggleSubs('fin_subs', this)" {% if role.permissions.finance.view %}checked{% endif %}> Finance Module</div>
+                        <div class="card-body py-2 d-none" id="fin_subs">
+                            <label class="d-block"><input type="checkbox" name="p_fin_add" class="form-check-input text-success" {% if role.permissions.finance.add %}checked{% endif %}> Can Add</label>
+                            <label class="d-block"><input type="checkbox" name="p_fin_edit" class="form-check-input text-warning" {% if role.permissions.finance.edit %}checked{% endif %}> Can Edit</label>
+                            <label class="d-block"><input type="checkbox" name="p_fin_del" class="form-check-input text-danger" {% if role.permissions.finance.delete %}checked{% endif %}> Can Delete</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports -->
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-light border-primary">
+                        <div class="card-header fw-bold"><input type="checkbox" name="p_rep_view" id="rep_view" class="form-check-input me-2" {% if role.permissions.reports.view %}checked{% endif %}> Reports Module</div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    <button type="submit" class="btn btn-success fw-bold px-5 fs-5"><i class="bi bi-save"></i> Save Role Permissions</button>
+</form>
+
+<script>
+    function toggleSubs(subId, checkbox) {
+        const subDiv = document.getElementById(subId);
+        if(subDiv) {
+            if(checkbox.checked) { subDiv.classList.remove('d-none'); } 
+            else { subDiv.classList.add('d-none'); }
+        }
+    }
+    // Run on load for editing
+    window.onload = function() {
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            if(cb.id) toggleSubs(cb.id.replace('_view', '_subs'), cb);
+        });
+    };
+</script>
+{% endblock %}

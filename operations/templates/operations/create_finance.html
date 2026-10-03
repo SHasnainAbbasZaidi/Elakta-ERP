@@ -1,0 +1,224 @@
+{% extends 'operations/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-wallet2 text-primary"></i> {% if edit_mode %}Edit Transaction{% else %}Add Finance Transaction{% endif %}</h2>
+    <a href="{% url 'finance_list' %}" class="btn btn-secondary">Cancel</a>
+</div>
+<hr>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Category *</label>
+                    <select name="category" id="finance_category" class="form-select" onchange="toggleFinanceCategory(this)" required>
+                        <option value="Invoice" {% if bill.category == 'Invoice' %}selected{% endif %}>Invoice Payment</option>
+                        <option value="Cash Bill" {% if bill.category == 'Cash Bill' %}selected{% endif %}>Cash Bill</option>
+                        <option value="Expense" {% if bill.category == 'Expense' %}selected{% endif %}>Expense</option>
+                        <option value="Inventory Price" {% if bill.category == 'Inventory Price' %}selected{% endif %}>Invoice (Inventory Items)</option>
+                        <option value="Other" {% if bill.category == 'Other' %}selected{% endif %}>Other (Custom)</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3 d-none" id="custom_category_div">
+                    <label class="fw-bold text-danger">Custom Category Name *</label>
+                    <input type="text" name="custom_category" class="form-control" value="{{ bill.custom_category }}" placeholder="Enter category...">
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Company Profile</label>
+                    <select name="company" class="form-select">
+                        <option value="">-- Select Company --</option>
+                        {% for comp in companies %}
+                            <option value="{{ comp.id }}" {% if bill.company.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Date *</label>
+                    <input type="date" name="date" class="form-control" value="{% if bill.date %}{{ bill.date|date:'Y-m-d' }}{% else %}{% now 'Y-m-d' %}{% endif %}" required>
+                </div>
+
+                <!-- INVOICE SELECTOR (Shown if Category is Invoice) -->
+                <div class="col-md-4 mb-3" id="invoice_selector_div">
+                    <label class="fw-bold text-primary">Select Invoice # *</label>
+                    <select name="linked_invoice" id="linked_invoice_select" class="form-select" onchange="autofillInvoiceData(this)">
+                        <option value="">-- Search Invoice Number --</option>
+                        {% for inv in invoices %}
+                            <option value="{{ inv.id }}" data-client-id="{{ inv.client.id }}" data-client-name="{{ inv.client.name }}" data-total="{{ inv.grand_total }}" {% if bill.linked_invoice.id == inv.id %}selected{% endif %}>{{ inv.invoice_number }} ({{ inv.client.name }} - PKR {{ inv.grand_total }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- SMART CLIENT SELECTOR -->
+                <div class="col-md-4 mb-3" id="client_selector_div">
+                    <label class="fw-bold text-primary">Client Name (Search or Type New)</label>
+                    <select name="client_select" id="client_select" class="form-select">
+                        <option value="">-- Search or Type Client --</option>
+                        {% for c in clients %}
+                            <option value="{{ c.id }}" {% if bill.client.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- SMART VENDOR SELECTOR (Shown for Inventory Invoice) -->
+                <div class="col-md-4 mb-3 d-none" id="vendor_selector_div">
+                    <label class="fw-bold text-primary">Vendor Name (Search or Type New)</label>
+                    <select name="vendor_select" id="vendor_select" class="form-select">
+                        <option value="">-- Search or Type Vendor --</option>
+                        {% for v in vendors %}
+                            <option value="{{ v.id }}" {% if bill.vendor.id == v.id %}selected{% endif %}>{{ v.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Total Amount (PKR) *</label>
+                    <input type="number" step="any" name="amount" id="total_amount_input" class="form-control fw-bold fs-5 text-success" value="{{ bill.amount }}" required>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Payment Status</label>
+                    <select name="payment_status" class="form-select">
+                        <option value="Paid" {% if bill.payment_status == 'Paid' %}selected{% endif %}>Paid (Full)</option>
+                        <option value="Partial" {% if bill.payment_status == 'Partial' %}selected{% endif %}>Partial Paid</option>
+                        <option value="Pending" {% if bill.payment_status == 'Pending' %}selected{% endif %}>Pending</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Payment Method</label>
+                    <select name="payment_method" class="form-select">
+                        <option value="Cash" {% if bill.payment_method == 'Cash' %}selected{% endif %}>Cash</option>
+                        <option value="FT" {% if bill.payment_method == 'FT' %}selected{% endif %}>Fund Transfer (FT)</option>
+                        <option value="Petty Cash" {% if bill.payment_method == 'Petty Cash' %}selected{% endif %}>Petty Cash</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="fw-bold">Receipt / Attachment</label>
+                    <input type="file" name="receipt_image" class="form-control">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MULTI-ITEM INVENTORY TABLE (Shown if Category is Inventory Invoice) -->
+    <div class="card shadow-sm border-0 mb-4 d-none" id="inventory_items_card">
+        <div class="card-header bg-dark text-white fw-bold">Inventory Items</div>
+        <div class="card-body p-0">
+            <table class="table table-bordered mb-0 align-middle">
+                <thead class="table-secondary text-center">
+                    <tr>
+                        <th style="width: 40%;">Item Name</th>
+                        <th style="width: 15%;">Qty</th>
+                        <th style="width: 20%;">Unit Price</th>
+                        <th style="width: 20%;">Total</th>
+                        <th style="width: 5%;">#</th>
+                    </tr>
+                </thead>
+                <tbody id="finance-items-body">
+                    <tr>
+                        <td><input type="text" name="item_name[]" class="form-control" placeholder="Item name..."></td>
+                        <td><input type="number" step="any" name="qty[]" class="form-control text-center f-qty" value="1" oninput="calcFinanceTotals()"></td>
+                        <td><input type="number" step="any" name="price[]" class="form-control text-center f-price" value="0" oninput="calcFinanceTotals()"></td>
+                        <td class="text-center fw-bold f-row-total">0.00</td>
+                        <td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="removeFinRow(this)"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white">
+            <button type="button" class="btn btn-sm btn-secondary fw-bold" onclick="addFinRow()"><i class="bi bi-plus-circle"></i> Add Item Row</button>
+        </div>
+    </div>
+
+    <div class="text-end">
+        <button type="submit" class="btn btn-success fw-bold px-5 fs-5"><i class="bi bi-save"></i> Save Transaction</button>
+    </div>
+</form>
+
+<script>
+    $(document).ready(function() {
+        $('#client_select').select2({ tags: true, placeholder: "-- Search or Type Client --", width: '100%' });
+        $('#vendor_select').select2({ tags: true, placeholder: "-- Search or Type Vendor --", width: '100%' });
+        $('#linked_invoice_select').select2({ placeholder: "-- Search Invoice Number --", width: '100%' });
+
+        toggleFinanceCategory(document.getElementById('finance_category'));
+    });
+
+    function toggleFinanceCategory(selectObj) {
+        const val = selectObj.value;
+        const invDiv = document.getElementById('invoice_selector_div');
+        const custDiv = document.getElementById('client_selector_div');
+        const vendDiv = document.getElementById('vendor_selector_div');
+        const invCard = document.getElementById('inventory_items_card');
+        const customCatDiv = document.getElementById('custom_category_div');
+
+        invDiv.classList.add('d-none');
+        custDiv.classList.add('d-none');
+        vendDiv.classList.add('d-none');
+        invCard.classList.add('d-none');
+        customCatDiv.classList.add('d-none');
+
+        if (val === 'Invoice') {
+            invDiv.classList.remove('d-none');
+            custDiv.classList.remove('d-none');
+        } else if (val === 'Inventory Price') {
+            vendDiv.classList.remove('d-none');
+            invCard.classList.remove('d-none');
+        } else if (val === 'Other') {
+            customCatDiv.classList.remove('d-none');
+            custDiv.classList.remove('d-none');
+        } else {
+            custDiv.classList.remove('d-none');
+        }
+    }
+
+    function autofillInvoiceData(selectObj) {
+        var opt = $(selectObj).find(':selected');
+        var clientId = opt.data('client-id');
+        var total = opt.data('total');
+
+        if(clientId) {
+            $('#client_select').val(clientId).trigger('change');
+        }
+        if(total) {
+            $('#total_amount_input').val(total);
+        }
+    }
+
+    function addFinRow() {
+        var row = `<tr>
+            <td><input type="text" name="item_name[]" class="form-control" placeholder="Item name..."></td>
+            <td><input type="number" step="any" name="qty[]" class="form-control text-center f-qty" value="1" oninput="calcFinanceTotals()"></td>
+            <td><input type="number" step="any" name="price[]" class="form-control text-center f-price" value="0" oninput="calcFinanceTotals()"></td>
+            <td class="text-center fw-bold f-row-total">0.00</td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="removeFinRow(this)"><i class="bi bi-trash"></i></button></td>
+        </tr>`;
+        $('#finance-items-body').append(row);
+    }
+
+    function removeFinRow(btn) {
+        $(btn).closest('tr').remove();
+        calcFinanceTotals();
+    }
+
+    function calcFinanceTotals() {
+        var grandTot = 0;
+        $('#finance-items-body tr').each(function() {
+            var qty = parseFloat($(this).find('.f-qty').val()) || 0;
+            var price = parseFloat($(this).find('.f-price').val()) || 0;
+            var rowTot = qty * price;
+            $(this).find('.f-row-total').text(rowTot.toFixed(2));
+            grandTot += rowTot;
+        });
+        if($('#finance_category').val() === 'Inventory Price' && grandTot > 0) {
+            $('#total_amount_input').val(grandTot.toFixed(2));
+        }
+    }
+</script>
+{% endblock %}
